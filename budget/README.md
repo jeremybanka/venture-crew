@@ -279,3 +279,33 @@ quota is accepted, no automatic rearm occurs, and freshness continues aging.
 Account identity and credential metadata are checked against the original native
 initialization on every sample. Other failures dispose of the process. This
 reduces unnecessary endpoint traffic; it does not guarantee endpoint recovery.
+
+### Last-successful Claude signal (Jeremy's one-hour policy)
+
+This supersedes the earlier immediate-invalidation / two-second-retry policy.
+Use `python -m budget set-freshness claude --seconds 3600` once with no active
+Claude permits. This preserves the account-bound successful observation but
+leaves the lane disarmed; it never reopens an earlier stop. Codex is unchanged.
+
+The Claude observer defaults to a five-minute refresh interval (`--interval 300`,
+allowed 300–1800 seconds). Failed attempts back off to 5, 10, 20, then 30 minutes;
+the persistent native client's own Retry-After remains in force. There is no
+immediate retry. A seeded fallback or transport timeout never becomes new quota.
+Instead the controller keeps the last validated successful sample at its original
+`observed_at`, for at most 3600 seconds. Normalization's conservative 60-second
+cache-age allowance remains, so acceptance never extends beyond the proven age.
+
+The private sample file retains the last success, including model allowances;
+refresh errors go to a separate `.refresh.json` record. Neither failure nor
+observer exit rewrites the successful timestamp. Controller state is durable,
+and admission/routing check its age and original reset deadlines. A signal older
+than an hour fails closed. Expired/reset windows, observed floors, actual provider
+denials, identity changes and schema failures still stop immediately when known.
+Local account/credential checks run every 15 seconds between network refreshes.
+No quota is invented, no reset is guessed, and no failure or later success
+implicitly rearms a latched lane.
+
+Limit: cached usage is a last-known measurement, not a real-time guarantee. Usage
+may cross a reserve between successful refreshes; actual provider quota errors
+still stop execution. Model-specific Fable exhaustion is not a provider-wide
+reserve and remains governed by the existing model routing checks.

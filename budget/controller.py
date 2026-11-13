@@ -138,7 +138,7 @@ class Controller:
         reserve_windows = [ident(key) for key in reserve_windows]
         if len(set(reserve_windows)) != len(reserve_windows) or not set(reserve_windows).issubset(floors):
             raise ValueError('invalid_reserve_windows')
-        freshness = num(freshness, 1, 900)
+        freshness = num(freshness, 1, 3600 if p == 'claude' else 900)
         if isinstance(max_active, bool) or not isinstance(max_active, int) or not 1 <= max_active <= 16:
             raise ValueError('invalid_concurrency')
         with self.tx() as db:
@@ -151,6 +151,37 @@ class Controller:
             s = self.state(db, p)
             s.update(account=account, floors=floors, reserve_windows=reserve_windows, freshness=freshness, max_active=max_active, armed=False, valid=False, reason='awaiting_observation', last=None, latest_observed_at=None)
             self.save(db, p, s, 'configure', {'account': account, 'floors': floors, 'reserve_windows': reserve_windows, 'freshness': freshness, 'max_active': max_active})
+
+    def set_freshness(self, p, seconds):
+        """Explicit policy migration preserving evidence, never rearming a lane."""
+        seconds = num(seconds, 1, 3600 if p == 'claude' else 900)
+        with self.tx() as db:
+            s = self.state(db, p)
+            if db.execute('SELECT 1 FROM permits WHERE provider=? AND ended IS NULL', (p,)).fetchone():
+                raise ValueError('active_permits_require_reconciliation')
+            self.close_factory(db, p, s, 'freshness_policy_changed')
+            s = self.state(db, p)
+            s.update(freshness=seconds, armed=False)
+            self.save(db, p, s, 'freshness_policy', {'seconds':seconds})
+
+    def refresh_failed(self, p, account, reason):
+        """Retain original successful evidence; never stamp it as newly observed."""
+        reason = ident(reason)
+        with self.tx() as db:
+            s = self.state(db, p)
+            if not account or account != s['account']:
+                s.update(valid=False, reason='account_mismatch')
+                self.save(db,p,s,'reject',{'reason':'account_mismatch'})
+                self.close_factory(db,p,s,'account_mismatch')
+                return {'fallback_retained':False,'reason':'account_mismatch'}
+            # Gates enforce original age, reset deadline, floor, and any latched
+            # stop. A transport failure cannot overwrite or rehabilitate them.
+            gate = self.factory_gate(db,s) or self.gate(s)
+            self.save(db,p,s,'refresh_failed',{'reason':reason,'observed_at':s['last']['observed_at'] if s['last'] else None})
+            if gate:
+                self.close_factory(db,p,s,gate)
+            return {'fallback_retained':gate is None,'reason':gate or 'last_successful_signal',
+                    'observed_at':s['last']['observed_at'] if s['last'] else None}
 
     def invalidate(self, p, reason):
         reason = ident(reason)

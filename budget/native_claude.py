@@ -18,6 +18,15 @@ from pathlib import Path
 from .controller import num
 
 
+def account_id(account):
+    if not isinstance(account,dict) or account.get('apiProvider') != 'firstParty':
+        raise ValueError('claude_subscription_account_required')
+    identity={k:account.get(k) for k in ('email','organization')}
+    if not all(isinstance(v,str) and v.strip() for v in identity.values()):
+        raise ValueError('claude_account_identity_missing')
+    return 'claude:'+hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()
+
+
 def normalize(account, raw, started_at):
     if not isinstance(account, dict) or account.get('apiProvider') != 'firstParty':
         raise ValueError('claude_subscription_account_required')
@@ -87,7 +96,7 @@ def normalize(account, raw, started_at):
     for window in windows.values():
         if window['resets_at'] is not None:
             window['resets_at'] = math.floor(window['resets_at'] + 0.5) - 1
-    return dict(provider='claude',account_id='claude:'+hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest(),
+    return dict(provider='claude',account_id=account_id(account),
                 observed_at=started_at-60,account_bound=True,freshness_proven=True,
                 usage_allowed=all(w['remaining_percent']>0 for w in windows.values()),
                 source='claude-native-get-usage',windows=windows,raw_reset_times=raw_reset_times)
@@ -198,6 +207,11 @@ class NativeClaude:
         raw=self.request({'subtype':'get_usage','skip_behaviors':True})
         if before != auth_metadata(): raise ValueError('claude_account_metadata_changed')
         return normalize(self.account,raw,started)
+    def current_account_id(self):
+        if self.account is None or self.identity != auth_metadata():
+            raise ValueError('claude_account_metadata_changed')
+        return account_id(self.account)
+
     def close(self):
         if self.proc.poll() is None:
             os.killpg(self.proc.pid,signal.SIGTERM)
@@ -213,15 +227,9 @@ def observe(executable='claude', client=None):
         owned=NativeClaude(executable)
         try:return observe(client=owned)
         finally:owned.close()
-    started=time.time()
-    try:
-        return client.observe()
-    except ValueError as error:
-        if str(error) != 'claude_seeded_or_incomplete_quota': raise
-    time.sleep(2)
-    sample=client.observe()
-    sample['observed_at']=min(sample['observed_at'],started-60)
-    return sample
+    # A failed request is not retried immediately. The observer schedules the
+    # next attempt with backoff while retaining original successful evidence.
+    return client.observe()
 
 
 def persist_sample(path, record):
