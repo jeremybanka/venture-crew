@@ -41,15 +41,17 @@ def main():
             print(json.dumps(claude_statusline(read_json(args.file)),allow_nan=False)); return 0
         c = None if args.cmd in ('observe-codex','observe-claude') and args.print_only else Controller(args.db, readonly=args.cmd=='status')
         if args.cmd=='observe-claude':
-            from .native_claude import observe, enforce_windows, safe_error, persist_sample
+            from .native_claude import observe, enforce_windows, safe_error, persist_sample, NativeClaude
             if args.print_only and args.sample_file: raise ValueError('print_only_cannot_write_sample')
             if not 15 <= args.interval <=120: raise ValueError('interval_must_be_15_to_120')
             stop=threading.Event()
             signal.signal(signal.SIGTERM,lambda *_:stop.set()); signal.signal(signal.SIGINT,lambda *_:stop.set())
+            client=None
             try:
                 while not stop.is_set():
                     try:
-                        sample=enforce_windows(observe(args.claude),args.observe_only_window,
+                        if client is None: client=NativeClaude(args.claude)
+                        sample=enforce_windows(observe(client=client),args.observe_only_window,
                             None if args.print_only else c.status('claude')['floors'])
                         result=sample if args.print_only else c.observe('claude',sample)
                         if args.sample_file:
@@ -61,9 +63,13 @@ def main():
                         if args.sample_file:
                             persist_sample(args.sample_file,{'accepted':False,'error':type(error).__name__})
                         print(json.dumps({'error':type(error).__name__,'reason':safe_error(error)}),flush=True)
+                        # Keep seeded-fallback process alive to honor native backoff.
+                        if safe_error(error) != 'claude_seeded_or_incomplete_quota' and client:
+                            client.close(); client=None
                         if args.once: return 1
                     stop.wait(args.interval)
             finally:
+                if client: client.close()
                 if not args.print_only: c.invalidate('claude','observer_stopped')
             return 0
         if args.cmd=='observe-codex':

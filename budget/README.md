@@ -268,3 +268,14 @@ The fallback itself is never accepted; retry evidence retains the first attempt'
 conservative freshness timestamp. Existing controller evidence continues aging
 and no gate is re-armed automatically. Account, version, and consistency failures
 are not retried; a second fallback fails closed normally.
+
+
+The long-running observer now retains one zero-model native process. Native
+2.1.321 keeps bearer-keyed endpoint failure backoff in process memory (403/429:
+Retry-After or default 300 seconds, capped at 3600). Restarting on each sample or
+seeded retry discarded that traffic protection. Seeded failures retain the
+process, but still invalidate/latch the controller exactly as before. No stale
+quota is accepted, no automatic rearm occurs, and freshness continues aging.
+Account identity and credential metadata are checked against the original native
+initialization on every sample. Other failures dispose of the process. This
+reduces unnecessary endpoint traffic; it does not guarantee endpoint recovery.

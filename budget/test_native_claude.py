@@ -3,8 +3,8 @@ import unittest
 import tempfile
 import json
 from pathlib import Path
-from unittest.mock import patch
-from .native_claude import normalize, enforce_windows, auth_metadata, safe_error, observe
+from unittest.mock import patch, Mock
+from .native_claude import normalize, enforce_windows, auth_metadata, safe_error, observe, NativeClaude
 
 class ClaudeNativeTests(unittest.TestCase):
     def setUp(self):
@@ -91,18 +91,27 @@ class ClaudeNativeTests(unittest.TestCase):
         raw['rate_limits']['limits'][1]['resets_at']='2026-11-24T06:00:00.1+00:00'
         self.assertNotEqual(boundaries[0],normalize(self.account,raw,1000)['windows']['seven_day']['resets_at'])
     def test_seeded_retry_preserves_initial_freshness(self):
-        with patch('budget.native_claude._observe_once',side_effect=[ValueError('claude_seeded_or_incomplete_quota'),{'observed_at':999}]) as read, patch('budget.native_claude.time.time',return_value=1000), patch('budget.native_claude.time.sleep') as sleep:
-            self.assertEqual(observe()['observed_at'],940)
+        with patch('budget.native_claude.NativeClaude.observe',side_effect=[ValueError('claude_seeded_or_incomplete_quota'),{'observed_at':999}]) as read, patch('budget.native_claude.time.time',return_value=1000), patch('budget.native_claude.time.sleep') as sleep:
+            self.assertEqual(observe(client=object.__new__(NativeClaude))['observed_at'],940)
             self.assertEqual(read.call_count,2)
             sleep.assert_called_once_with(2)
     def test_account_error_not_retried(self):
-        with patch('budget.native_claude._observe_once',side_effect=ValueError('claude_account_metadata_changed')) as read:
-            with self.assertRaises(ValueError):observe()
+        with patch('budget.native_claude.NativeClaude.observe',side_effect=ValueError('claude_account_metadata_changed')) as read:
+            with self.assertRaises(ValueError):observe(client=object.__new__(NativeClaude))
             self.assertEqual(read.call_count,1)
     def test_second_seeded_error_remains_failure(self):
-        with patch('budget.native_claude._observe_once',side_effect=ValueError('claude_seeded_or_incomplete_quota')) as read, patch('budget.native_claude.time.sleep'):
-            with self.assertRaises(ValueError):observe()
+        with patch('budget.native_claude.NativeClaude.observe',side_effect=ValueError('claude_seeded_or_incomplete_quota')) as read, patch('budget.native_claude.time.sleep'):
+            with self.assertRaises(ValueError):observe(client=object.__new__(NativeClaude))
             self.assertEqual(read.call_count,2)
+    def test_persistent_client_initializes_once_and_checks_identity(self):
+        client=object.__new__(NativeClaude);client.account=None;client.identity=None
+        client.request=Mock(side_effect=[{'account':self.account},self.raw,self.raw])
+        with patch('budget.native_claude.auth_metadata',return_value=('credential','identity')):
+            client.observe();client.observe()
+        self.assertEqual([call.args[0]['subtype'] for call in client.request.call_args_list],['initialize','get_usage','get_usage'])
+        with patch('budget.native_claude.auth_metadata',return_value=('credential','new_identity')):
+            with self.assertRaisesRegex(ValueError,'claude_account_metadata_changed'):client.observe()
+        self.assertEqual(client.request.call_count,3)
     def test_account_change_changes_binding(self):
         a=normalize(self.account,self.raw,1000)['account_id'];self.account['email']='another@example.test'
         self.assertNotEqual(a,normalize(self.account,self.raw,1000)['account_id'])

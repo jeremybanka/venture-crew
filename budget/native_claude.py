@@ -162,6 +162,7 @@ class NativeClaude:
             cwd=self.temp.name,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
             text=True,start_new_session=True)
         self.inbox=queue.Queue(maxsize=1024); self.seq=0
+        self.account=None; self.identity=None
         threading.Thread(target=self._read,daemon=True).start()
     def _read(self):
         try:
@@ -186,14 +187,17 @@ class NativeClaude:
                 if response.get('subtype')!='success':raise RuntimeError('claude_control_failed')
                 return response.get('response',{})
     def observe(self):
-        initial_identity=auth_metadata()
-        init=self.request({'subtype':'initialize'})
         before=auth_metadata()
-        if initial_identity != before: raise ValueError('claude_account_metadata_changed')
+        if self.account is None:
+            init=self.request({'subtype':'initialize'})
+            if before != auth_metadata(): raise ValueError('claude_account_metadata_changed')
+            self.account=init.get('account'); self.identity=before
+        elif before != self.identity:
+            raise ValueError('claude_account_metadata_changed')
         started=time.time()
         raw=self.request({'subtype':'get_usage','skip_behaviors':True})
         if before != auth_metadata(): raise ValueError('claude_account_metadata_changed')
-        return normalize(init.get('account'),raw,started)
+        return normalize(self.account,raw,started)
     def close(self):
         if self.proc.poll() is None:
             os.killpg(self.proc.pid,signal.SIGTERM)
@@ -202,23 +206,20 @@ class NativeClaude:
         self.proc.stdin.close();self.proc.stdout.close();self.temp.cleanup()
 
 
-def _observe_once(executable):
-    client=NativeClaude(executable)
-    try:return client.observe()
-    finally:client.close()
-
-
-def observe(executable='claude'):
-    # One retry only for native seeded/incomplete fallback, never accept the
-    # fallback or retry account/schema failures. Controller's prior evidence
-    # continues aging while this runs; this function never re-arms the gate.
+def observe(executable='claude', client=None):
+    # Reuse the native process so its bearer-keyed endpoint Retry-After/backoff
+    # survives. A fresh process per retry bypassed that native traffic protection.
+    if client is None:
+        owned=NativeClaude(executable)
+        try:return observe(client=owned)
+        finally:owned.close()
     started=time.time()
     try:
-        return _observe_once(executable)
+        return client.observe()
     except ValueError as error:
         if str(error) != 'claude_seeded_or_incomplete_quota': raise
     time.sleep(2)
-    sample=_observe_once(executable)
+    sample=client.observe()
     sample['observed_at']=min(sample['observed_at'],started-60)
     return sample
 
