@@ -212,3 +212,59 @@ implement that dispatcher or publish PRs; see SOP.md for handoff and pause recor
 Production CLI/hook admission requires a factory opening record; the old single-provider
 `arm` CLI is disabled. Internal independent controller APIs remain only for
 fixtures and are not a security boundary against arbitrary Python execution.
+
+### Native Claude quota observer (pinned 2.1.321)
+
+`python -m budget observe-claude --once --print-only` makes only native
+`initialize` and `get_usage` control requests, never a model prompt. The account
+binding is a hash of the same process's account email and organization; raw
+identity and credentials are never emitted. A native full account login is
+required. The existing inference-only setup token does not qualify.
+
+Static inspection of 2.1.321 proves that usage snapshots are account-UUID bound
+and accepted for less than 60 seconds before an endpoint fetch is required.
+The observer therefore dates samples at request start minus 60 seconds. It
+requires the structured `limits` and `model_scoped` projections; native seeded
+fallback after fetch failure strips `limits`, so that response is rejected.
+All ordinary and model-specific windows are enforced conservatively. Paid extra
+usage is never treated as allowance. An inactive zero-used five-hour window has
+no reset until activity begins; it is explicitly marked inactive. Unknown
+structured limits, missing account identity, unsupported native versions, errors,
+and observer shutdown fail closed. The protocol is experimental and must be
+reverified before upgrading the pinned native version.
+
+The authorized Claude opening policy uses a 40% reserve for `seven_day`, with
+`five_hour` availability stopping only at zero. Invoke the observer with
+`--observe-only-window model:fable` to retain Fable quota in
+`informational_windows` without blocking Opus on that model-specific limit.
+Fable exhaustion still makes Fable unavailable: the dispatcher must consult that
+informational window before launching Fable and use the seat's allowed fallback.
+No other model window may be exempted by this flag. Any unconfigured enforced
+window fails observation closed and requires operator reconciliation.
+
+Structured native limits must exactly agree with projected percentages and reset
+times, with no duplicates or missing projections. Credential-file metadata is
+checked across initialize and usage; an allowlisted account identity fingerprint (account UUID, organization UUID,
+email address) is checked across initialize and usage. Volatile configuration
+counters and profile refresh timestamps are deliberately excluded. This detects
+normal concurrent login/replacement without reading credential contents. It is
+not protection against a hostile local process restoring identity and credential metadata (ABA), nor a
+claim that native credentials are immutable. Native accountUuid cache validation
+provides the separate quota/account association. The controller still rejects
+an observed account hash different from its configured account.
+
+Reset precision: pinned native `Wor` preserves successful endpoint ISO reset
+strings; the header parser uses `Math.round` seconds. Successful endpoint samples
+were observed to jitter by fractions of a second around the same boundary (for
+example 05:59:59.555658 and 06:00:00.140253). After exact structured/projection
+validation, the collector canonicalizes to nearest second **minus one second**.
+That preserves whole-window reset detection while expiring evidence no later
+than the raw reset. Original numeric timestamps remain in top-level `raw_reset_times` in
+collector output for diagnosis, never as extra keys within normalized windows. This is a precision assumption specific to the
+verified native version, not permission to ignore arbitrary reset changes.
+
+A native seeded/incomplete fallback gets at most one retry after two seconds.
+The fallback itself is never accepted; retry evidence retains the first attempt's
+conservative freshness timestamp. Existing controller evidence continues aging
+and no gate is re-armed automatically. Account, version, and consistency failures
+are not retried; a second fallback fails closed normally.

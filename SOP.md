@@ -90,3 +90,19 @@ The planner returns a decision; it does not start or rebuild native sessions.
 Until runtime/model selection and hook-preserving native handover are verified
 end-to-end, automatic model switching is not operational. Nominal `rig.yaml`
 runtimes are placeholders for initial topology, never a bypass of routing.
+
+
+## Guest working environment
+
+The rig's guest is its working environment. Registered repositories already in
+the guest are the canonical project checkouts. Work with those repositories;
+create task-owned Git worktrees inside the selected repository where isolation
+is useful. Do not create an independent clone as a routine trust, tooling, or
+permission workaround. Preserve human branches, uncommitted work and unrelated
+worktrees. Report a real blocker and obtain any required scoped trust approval
+instead of silently substituting another checkout.
+
+For linked-worktree Codex hooks, storage may be required in the main checkout.
+Any shared-root dispatcher must be explicitly approved, narrowly scoped to the
+authorized task worktree, and inert for unrelated sessions. Keep existing native
+sandbox and approval settings. No worker may widen scope or modify quota gates.

@@ -13,8 +13,10 @@ import sys
 from .controller import Controller
 
 
-def denied(event, reason):
+def denied(event, reason, provider=None):
     message='Wayforge budget paused: '+reason
+    if provider=='claude' and event=='PreCompact':
+        return {'decision':'block','reason':message}
     if event=='PreToolUse':
         return {'hookSpecificOutput':{'hookEventName':event,'permissionDecision':'deny','permissionDecisionReason':message}}
     if event in ('SessionStart','Stop','PreCompact','PostCompact'):
@@ -23,43 +25,51 @@ def denied(event, reason):
 
 
 def handle(event, payload, c, p, seat, *, require_factory=False):
+    def deny(reason): return denied(event,reason,p)
     if not isinstance(payload,dict) or payload.get('hook_event_name')!=event:
-        return denied(event,'event_mismatch')
+        return deny('event_mismatch')
     if require_factory and not c.status(p).get('opening_id'):
-        return denied(event,'paired_factory_opening_required')
+        return deny('paired_factory_opening_required')
     if p=='claude':
         # Native 2.1.321 common input defines prompt_id, not turn_id.
         # Never let a subagent event release or reuse its parent's permit.
         if payload.get('agent_id'):
-            return denied(event,'subagent_event_not_admitted')
+            return deny('subagent_event_not_admitted')
         payload={**payload, 'turn_id':payload.get('prompt_id')}
+    if p=='claude' and event=='PreCompact':
+        session,turn=payload.get('session_id'),payload.get('turn_id')
+        status=c.status(p)
+        if not status['admission_open']:return deny(status['gate_reason'])
+        if not session or not turn or not any(x['seat']==seat and x['session']==session and x['turn']==turn for x in status['active_permits']):
+            return deny('active_permit_required_for_compaction')
+        return {}
     if event=='PreToolUse':
         name=str(payload.get('tool_name','')).rsplit('__',1)[-1].rsplit('.',1)[-1]
         if name in {'Agent','Task','spawn_agent','resume_agent','followup_task','send_input','fork_thread','create_thread','send_message_to_thread'}:
-            return denied(event,'use_declared_seats_no_unmetered_children')
+            return deny('use_declared_seats_no_unmetered_children')
         # Check both active permit and current capacity for tool work. This is
         # not a gate on model tokens already in flight.
         session, turn = payload.get('session_id'), payload.get('turn_id')
         if not session or not turn:
-            return denied(event,'native_session_and_turn_identity_required')
+            return deny('native_session_and_turn_identity_required')
         status=c.status(p)
         if not status['admission_open']:
-            return denied(event,status['gate_reason'])
+            return deny(status['gate_reason'])
         if not any(x['seat']==seat and x['session']==session and x['turn']==turn for x in status['active_permits']):
-            return denied(event,'active_permit_required')
+            return deny('active_permit_required')
         return {}
     if event in ('SessionStart','PreCompact','PostCompact'):
         s=c.status(p)
-        return {} if s['admission_open'] else denied(event,s['gate_reason'])
+        return {} if s['admission_open'] else deny(s['gate_reason'])
     session,turn=payload.get('session_id'),payload.get('turn_id')
     if not session or not turn:
-        return denied(event,'native_session_and_turn_identity_required')
-    if event in ('Stop','Interrupt'):
+        return deny('native_session_and_turn_identity_required')
+    if event in ('Stop','Interrupt') or (p=='claude' and event=='StopFailure'):
         c.release(p,session,turn)
         return {'continue':False} if event=='Stop' else {}
-    if event!='UserPromptSubmit': return denied(event,'unsupported_event')
+    if event!='UserPromptSubmit': return deny('unsupported_event')
     result=c.admit(p,seat,session,turn)
-    if not result['allowed']: return denied(event,result['reason'])
+    if not result['allowed']: return deny(result['reason'])
     return {'hookSpecificOutput':{'hookEventName':event,'additionalContext':'One bounded Wayforge phase admitted. No child agents or mid-turn provider switching. Hand off and stop at its boundary.'}}
 
 
@@ -76,7 +86,7 @@ def main():
         if len(raw)>1000000: raise ValueError('oversized_input')
         result=handle(a.event,json.loads(raw),Controller(a.db, readonly=a.event in ('PreToolUse','SessionStart','PreCompact','PostCompact')),a.provider,a.seat,require_factory=True)
     except BaseException as error:
-        result=denied(a.event,'controller_unavailable_'+type(error).__name__)
+        result=denied(a.event,'controller_unavailable_'+type(error).__name__,a.provider)
     finally:
         signal.alarm(0)
     print(json.dumps(result,allow_nan=False))

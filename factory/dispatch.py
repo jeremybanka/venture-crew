@@ -4,7 +4,7 @@ from routing.routing import plan
 
 TOKEN=re.compile(r'^[A-Za-z0-9][A-Za-z0-9_.:@/-]{0,255}$')
 
-def plan_dispatch(*, task, native, preferences, catalog, statuses, readiness, current=None, handover=None, no_existing_session=False):
+def plan_dispatch(*, task, native, preferences, catalog, statuses, readiness, current=None, handover=None, no_existing_session=False, model_snapshot=None):
     # Native ownership/claimed status must be checked from actual queue immediately
     # before execution; issue content cannot supply this evidence.
     if not isinstance(task,dict) or not isinstance(native,dict): raise ValueError('task_and_native_evidence_required')
@@ -24,7 +24,7 @@ def plan_dispatch(*, task, native, preferences, catalog, statuses, readiness, cu
         return {'status':'blocked','reason':'conflicting_session_evidence','argv':None}
     if task.get('scope_approved') is not True or task.get('workspace_registered') is not True:
         return {'status':'blocked','reason':'scope_and_owned_workspace_required','argv':None}
-    decision=plan(task['seat'],preferences,catalog,statuses,readiness,current=current,handover=handover)
+    decision=plan(task['seat'],preferences,catalog,statuses,readiness,current=current,handover=handover,model_snapshot=model_snapshot)
     if decision['status']!='selected': return {'status':'blocked','reason':decision['reason'],'route':decision,'argv':None}
     return {'status':'cold_handoff_planned','route':decision,'launch_authorized':False,
             'argv':['rig','queue','handoff',task['queue_id'],'--to',task['destination'],
