@@ -234,3 +234,15 @@ python3 -m factory.lookout --repo owner/product --pr 123 \
 
 This recovery is non-consuming and network-free. Durable observation is not an
 acknowledged handoff: Captain/automation still owns delivery and repair dispatch.
+
+For durable Captain handoffs, run `python3 -m factory.lookout_service` with the
+same explicit repo/PR plus `--state-dir`, `--rig /absolute/clean/rig`,
+`--source lookout-observer@<rig>` and `--destination bridge-captain@<rig>`.
+It polls every 300 seconds, holds a lifetime single-instance lock, and sends
+changed failures or incomplete evidence through idempotent native queue items
+with `--no-nudge`. It never starts model work. Immutable delivery payloads and
+retry IDs survive interruption; `delivery-status.json` records observation and
+queue submission state. Submitted does not mean acknowledged. Captain or the
+operator backstop must consume pending notifications. Supervise this process
+with the host's existing service manager; a service process is distinct from a
+live model seat. It stops on PR closure/merge. Keep credentials out of its unit.
