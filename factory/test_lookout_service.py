@@ -9,14 +9,14 @@ from .lookout_service import LookoutService
 
 
 class ServiceTests(unittest.TestCase):
-    def service(self, root, status='failed', runner=None):
+    def service(self, root, status='failed', runner=None, wake=False):
         self.report = dict(repo='owner/repo', pr=1, head_sha='a'*40, status=status,
                            terminal=status=='merged', checked_at=1.0, changed=True)
         return LookoutService(observer=SimpleNamespace(poll=lambda: dict(self.report)),
                               state_dir=str(Path(root).resolve()), rig='/bin/rig',
-                              source='lookout-observer@crew', destination='bridge-captain@crew', runner=runner)
+                              source='lookout-observer@crew', destination='bridge-captain@crew', runner=runner, wake_captain=wake)
 
-    def native(self):
+    def native(self, wake=False):
         self.rows, self.calls = {}, []
         def run(argv):
             self.calls.append(argv)
@@ -24,7 +24,11 @@ class ServiceTests(unittest.TestCase):
                 row = self.rows.get(argv[3])
                 return SimpleNamespace(returncode=0 if row else 1, stdout=json.dumps(row))
             self.assertEqual(argv[1:3], ['queue', 'create'])
-            self.assertIn('--no-nudge', argv)
+            if wake:
+                self.assertNotIn('--no-nudge', argv)
+                self.assertEqual(argv[argv.index('--gate')+1], 'ci-triage')
+            else:
+                self.assertIn('--no-nudge', argv)
             get = lambda flag: argv[argv.index(flag)+1]
             row = dict(qitemId=get('--id'), body=Path(get('--body-file')).read_text(),
                        sourceSession=get('--source'), destinationSession=get('--destination'))
@@ -42,6 +46,22 @@ class ServiceTests(unittest.TestCase):
             self.assertEqual(result['deliveries'][0]['state'], 'submitted')
             self.assertEqual(len([a for a in self.calls if a[2]=='create']), 1)
             self.assertTrue((Path(root)/'delivery-status.json').exists())
+
+    def test_opt_in_native_wake_is_deduplicated(self):
+        with TemporaryDirectory() as root, patch.dict(os.environ, {}, clear=True):
+            service = self.service(root, runner=self.native(wake=True), wake=True)
+            with service.lock():
+                service.tick(); service.tick()
+            self.assertEqual(len([a for a in self.calls if a[2]=='create']), 1)
+
+    def test_recovery_after_failure_delivered_once(self):
+        with TemporaryDirectory() as root, patch.dict(os.environ, {}, clear=True):
+            service = self.service(root, runner=self.native(wake=True), wake=True)
+            with service.lock():
+                service.tick()
+                self.report.update(status='observed_green', checked_at=2.0)
+                service.tick(); service.tick()
+            self.assertEqual(len([a for a in self.calls if a[2]=='create']), 2)
 
     def test_unknown_retry_same_identity_and_payload(self):
         with TemporaryDirectory() as root, patch.dict(os.environ, {}, clear=True):

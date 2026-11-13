@@ -1,9 +1,10 @@
-"""Single-instance Lookout observer with durable, cold native-queue handoffs.
+"""Single-instance Lookout observer with durable native-queue handoffs.
 
 CLI: python3 -m factory.lookout_service --repo owner/repo --pr 123 --gh /abs/gh
 --state-dir /abs/ignored/lookout --rig /abs/rig --source lookout-observer@crew
 --destination bridge-captain@crew [--expected-check Knip] [--once]. Polls every
-300 seconds. Queue writes always use --no-nudge; this never starts model work.
+300 seconds. Queue writes are cold by default. --wake-captain opts into native OpenRig nudges
+only after Captain native quota admission has been verified; no custom messaging.
 The latest local delivery status is available in delivery-status.json; the
 SQLite journal retains exact immutable payloads for interrupted write recovery.
 """
@@ -25,7 +26,7 @@ SUMMARY = 'Lookout: CI evidence requires Captain triage'
 
 
 class LookoutService:
-    def __init__(self, *, observer, state_dir, rig, source, destination, runner=native_runner):
+    def __init__(self, *, observer, state_dir, rig, source, destination, runner=native_runner, wake_captain=False):
         self.root = Path(state_dir)
         if not self.root.is_absolute() or any(p.is_symlink() for p in (self.root, *self.root.parents)):
             raise ValueError('safe_absolute_state_directory_required')
@@ -40,6 +41,7 @@ class LookoutService:
         if os.environ.get('OPENRIG_SESSION_NAME') or os.environ.get('RIGGED_SESSION_NAME'):
             raise ValueError('external_observer_must_not_claim_managed_seat')
         self.observer, self.rig, self.source, self.destination, self.runner = observer, rig, source, destination, runner
+        self.wake_captain = bool(wake_captain)
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.locked = False
 
@@ -91,7 +93,11 @@ class LookoutService:
             with os.fdopen(fd, 'w') as file:
                 file.write(body); file.flush(); os.fsync(file.fileno())
         args = ['queue', 'create', '--source', source, '--destination', destination,
-                '--id', identity, '--summary', SUMMARY, '--body-file', str(path), '--no-nudge', '--json']
+                '--id', identity, '--summary', SUMMARY, '--body-file', str(path), '--json']
+        if self.wake_captain:
+            args.extend(['--gate', 'ci-triage'])
+        else:
+            args.append('--no-nudge')
         row = self._json(args)
         if self._matches(row, identity, body, source, destination):
             return 'submitted'
@@ -108,7 +114,9 @@ class LookoutService:
         identity = 'lookout-' + hashlib.sha256(json.dumps({'report': stable, 'source': self.source,
                     'destination': self.destination}, sort_keys=True).encode()).hexdigest()[:40]
         with closing(self._db()) as db:
-            if report['status'] in ALERTS:
+            had_report = db.execute('SELECT 1 FROM deliveries LIMIT 1').fetchone() is not None
+            recovery = had_report and report['status'] == 'observed_green'
+            if report['status'] in ALERTS or recovery:
                 body = json.dumps(stable, sort_keys=True, indent=2) + '\n'
                 db.execute('INSERT OR IGNORE INTO deliveries VALUES (?,?,?,?,?)',
                            (identity, body, self.source, self.destination, 'unknown'))
@@ -135,11 +143,13 @@ def main():
     parser.add_argument('--pr', type=int, required=True)
     parser.add_argument('--expected-check', action='append', default=[])
     parser.add_argument('--once', action='store_true')
+    parser.add_argument('--wake-captain', action='store_true',
+                        help='Use native queue nudges only for a verified metered Captain')
     args = parser.parse_args()
     observer = Lookout(repo=args.repo, pr=args.pr, gh_executable=args.gh,
                        state_file=str(Path(args.state_dir)/'observations.sqlite3'), expected_checks=args.expected_check)
     service = LookoutService(observer=observer, state_dir=args.state_dir, rig=args.rig,
-                             source=args.source, destination=args.destination)
+                             source=args.source, destination=args.destination, wake_captain=args.wake_captain)
     with service.lock():
         while True:
             status = service.tick()

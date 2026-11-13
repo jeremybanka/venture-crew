@@ -246,3 +246,12 @@ queue submission state. Submitted does not mean acknowledged. Captain or the
 operator backstop must consume pending notifications. Supervise this process
 with the host's existing service manager; a service process is distinct from a
 live model seat. It stops on PR closure/merge. Keep credentials out of its unit.
+
+Once Captain's native quota admission is verified, enable the Lookout service's
+`--wake-captain` option. It uses ordinary OpenRig queue-create nudges and a
+`ci-triage` gate tag; native OpenRig owns delivery, idle-gate wake, ownership and
+handoff. It is not a second message bus or a custom dispatcher. Default remains
+cold for installations without a verified metered Captain. Already submitted
+observations are not duplicated or resent merely because wake is enabled.
+After a reported problem, current-head green recovery is also handed to Captain,
+so dependent work can resume on evidence rather than an external manual check.
