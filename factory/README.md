@@ -162,3 +162,96 @@ Review/test receipt authenticity remains a trusted Warden integration contract.
 Do not source approval receipts from an implementor's claim or issue content.
 Already-published branch/PR state must be reconciled before changing scope. No real
 issue, PR, model launch or credential mutation was performed during fixture tests.
+
+## Pre-publication check coverage
+
+`python3 -m factory.checks --repo /path/to/worktree --head FULL_SHA` emits a
+content-hashed inventory from Git objects at that commit. Discovery is read-only
+and needs no YAML dependency: the complete workflow text is the obligation,
+so nested/multiline commands, matrix/default context and `uses` are not lost.
+All package scripts are included (non-check scripts need an explicit exclusion).
+Follow remote/reusable actions and tool config references during independent
+review; discovery does not claim to resolve the transitive CI graph automatically.
+
+Each slice now additionally requires:
+
+```json
+{
+  "check_coverage": {
+    "manifest": {"version": 1, "head_sha": "FULL_SHA", "units": [], "digest": "FROM_DISCOVERY"},
+    "reviewer": "warden",
+    "coverage": {
+      ".github/workflows/lint.yml": {"disposition": "required", "runs": ["knip", "knip-production"]},
+      "package.json#scripts/dev": {"disposition": "not_applicable", "reason": "Interactive development server, not a CI check"}
+    },
+    "runs": {
+      "knip": {"head_sha": "FULL_SHA", "exit_code": 0, "environment": "approved guest toolchain and dependencies", "command": "pnpm run lint:unused", "proof": "local immutable result reference"},
+      "knip-production": {"head_sha": "FULL_SHA", "exit_code": 0, "environment": "approved guest toolchain and dependencies", "command": "pnpm run lint:unused:production", "proof": "local immutable result reference"}
+    }
+  }
+}
+```
+
+Use the actual manifest, never this illustrative empty one. Every inventory ID
+must have a disposition; required entries need successful, current-head command
+proof. Missing, stale, failed, unresolved or entirely waived coverage blocks
+publication. No repository command is automatically executed. Like existing
+review/test receipts, evidence authentication is the trusted caller's job; it
+must regenerate the manifest and verify receipts, not trust an implementor's
+claim. Cheap pre-commit checks supplement, not replace, this publication gate.
+
+The executing `publish` CLI also requires `--check-repository /canonical/worktree`.
+It regenerates the exact-head inventory from local Git objects and compares the
+entire manifest before any GitHub write. Omitting a workflow from a self-consistent
+receipt therefore blocks publication. Review/run proof authenticity remains the
+trusted caller's responsibility. This is intentionally a breaking gate for old
+receipts: rediscover/review coverage rather than adding a bypass flag.
+
+## Lookout: open-PR CI watch
+
+```sh
+python3 -m factory.lookout --repo owner/product --pr 123 \
+  --gh /absolute/path/to/gh --state /absolute/ignored/lookout.sqlite3 \
+  --expected-check Knip --watch --interval 300
+```
+
+Use explicitly assigned PRs and real check names discovered from their workflows.
+The deterministic observer double-reads the current head, emits changed JSON
+reports, and stops on merge/closure. It never comments, changes CI, repairs code,
+or merges. Captain must consume/acknowledge its handoffs and route failures to the
+slice owner and systemic gaps to Cleric. Watch all PRs in a stack individually.
+Unknown, missing, stale and unavailable evidence holds delivery; observed green
+is not proof that every required check or independent review is satisfied.
+
+Reports include same-repository GitHub CI evidence links when supplied by GitHub.
+The full sanitized latest report is saved before stdout emission, so a consumer
+can recover after a crash without issuing another request:
+
+```sh
+python3 -m factory.lookout --repo owner/product --pr 123 \
+  --state /absolute/ignored/lookout.sqlite3 --latest
+```
+
+This recovery is non-consuming and network-free. Durable observation is not an
+acknowledged handoff: Captain/automation still owns delivery and repair dispatch.
+
+For durable Captain handoffs, run `python3 -m factory.lookout_service` with the
+same explicit repo/PR plus `--state-dir`, `--rig /absolute/clean/rig`,
+`--source lookout-observer@<rig>` and `--destination bridge-captain@<rig>`.
+It polls every 300 seconds, holds a lifetime single-instance lock, and sends
+changed failures or incomplete evidence through idempotent native queue items
+with `--no-nudge`. It never starts model work. Immutable delivery payloads and
+retry IDs survive interruption; `delivery-status.json` records observation and
+queue submission state. Submitted does not mean acknowledged. Captain or the
+operator backstop must consume pending notifications. Supervise this process
+with the host's existing service manager; a service process is distinct from a
+live model seat. It stops on PR closure/merge. Keep credentials out of its unit.
+
+Once Captain's native quota admission is verified, enable the Lookout service's
+`--wake-captain` option. It uses ordinary OpenRig queue-create nudges and a
+`ci-triage` gate tag; native OpenRig owns delivery, idle-gate wake, ownership and
+handoff. It is not a second message bus or a custom dispatcher. Default remains
+cold for installations without a verified metered Captain. Already submitted
+observations are not duplicated or resent merely because wake is enabled.
+After a reported problem, current-head green recovery is also handed to Captain,
+so dependent work can resume on evidence rather than an external manual check.

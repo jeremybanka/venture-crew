@@ -56,7 +56,7 @@ Check guest disk capacity before activation. Preserve held work and avoid launch
    than guessing a turn ID. Native end-to-end verification is still required. Keep the existing permission posture. Native
    hook discovery/trust and denial behavior need actual end-to-end verification.
 5. **Bounded first activation.** After these gates, launch a minimal implementation
-   and independent-review flow before expanding. Do not launch all 14 seats merely
+   and independent-review flow before expanding. Do not launch all 15 seats merely
    because the topology validates. Supply a real task, project, acceptance proof
    and publication boundary. Verify cleanup-hold behavior as well as success.
 
@@ -128,3 +128,51 @@ live evidence collector and verified hooks/automatic-startup admission; that
 collector is not installed. No runtime migration or actual task/PR was executed.
 Publication verifies base/head and reconciles unknown results without duplicate
 create. The existing clean-runtime/Claude-quota/authorization gates still apply.
+
+## Native activation findings (2026-11-13)
+
+Bounded activation now has actual Codex evidence, not just mocked fixtures:
+
+- Codex0.167.1 linked Git worktrees inherit hook definitions from the root
+  checkout. Worktree-local inline/JSON hooks are deliberately replaced. The owner
+  requires canonical guest repositories, so use explicitly approved root-stored
+  dispatchers scoped to the task worktree and inert for unrelated sessions.
+- Native hook discovery found all seven reviewed hooks in that task clone.
+  The diagnostic clone was retired from active work without deleting its draft;
+  product edits were transferred byte-for-byte into the canonical repository task
+  worktree. Exact definition hashes were trusted through the native configuration API;
+  existing workspace-write and on-request permissions were preserved.
+- A closed opening stopped SessionStart before model output. A bounded admitted
+  smoke turn exercised SessionStart, UserPromptSubmit and Stop, released its exact
+  native permit, and returned the expected response. Real planning tool calls
+  subsequently exercised PreToolUse under a live permit.
+- The first cold materialized seat starts through `rig launch RIG LOGICAL_SEAT`,
+  not the fresh-occupant command. `--plan` checks restore selection and does not
+  preview pristine first starts. The current `seat set-cwd` requires startup
+  context absent before first launch. Materialize the intended task cwd up front;
+  do not edit OpenRig's database or launch the entire crew as a workaround.
+- A bounded task cohort launched one Sol/high planning seat, produced a durable
+  plan and handoff, released its permit, then launched Strider implementation.
+  This is not proof of automatic whole-factory dispatch or completed PR delivery.
+
+The live Claude path requires full native account login, not inference-only
+setup-token authentication. The pinned no-model collector and explicit inactive
+allowance representation are covered by deterministic tests. Current requested
+policy separates weekly reserve from short-window/model availability: Claude's
+weekly reserve follows the per-opening value; its five-hour allowance stops at
+zero remaining; Fable-specific exhaustion affects Fable eligibility rather than
+closing Opus. A provider's actual rate-limit rejection must still be honored.
+See budget/README.md for the collector's bounded-age evidence contract and
+version-specific limitations. On 2026-11-13 the task-scoped Claude hook was tested
+closed (zero model turns/cost) and admitted with Opus 5.5/high (one bounded reply;
+the exact native prompt permit was released). This proves that tested lifecycle,
+not sustained provider health or completion of any work item. Recheck current
+observer freshness and gate state before claiming the lane is running.
+
+The native workspace sandbox initially blocked Scrubs' shared payload-cache
+initialization. The dotfiles launcher now supports an exact-worktree
+`SCRUBS_DIRTY_CACHE_ROOT="$PWD/.scrubs-dirty-cache"` option. Native workspace
+sandbox probes passed for Node and pnpm with this option, preserving all Scrubs
+namespaces and native permissions. Keep the cache ignored and task-owned; do not
+make the shared home writable or execute dirty binaries directly to work around
+launcher failures.

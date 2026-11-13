@@ -36,7 +36,8 @@ def _check(evidence):
     if not isinstance(evidence,dict): raise ValueError('live_evidence_required')
     args={k:evidence[k] for k in ('task','native','preferences','catalog','statuses','readiness')}
     args.update(current=evidence.get('current'),handover=evidence.get('handover'),
-                no_existing_session=evidence.get('no_existing_session',False))
+                no_existing_session=evidence.get('no_existing_session',False),
+                model_snapshot=evidence.get('model_snapshot'))
     decision=plan_dispatch(**args)
     if decision['status']!='cold_handoff_planned':raise ValueError(decision['reason'])
     if args['current'] is not None:raise ValueError('existing_session_requires_verified_native_handover')

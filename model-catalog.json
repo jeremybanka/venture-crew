@@ -7,6 +7,20 @@
       "provider": "codex",
       "runtime": "codex",
       "evidence": "Wayforge native Codex 0.167.1 model/list, 2026-11-13: GPT-6.1-Sol, hidden false; selected current 6.1 generation for requested Sol."
+    },
+    "Opus": {
+      "verified": true,
+      "model": "claude-opus-5-5",
+      "provider": "claude",
+      "runtime": "claude-code",
+      "evidence": "Wayforge native Claude Code 2.1.321 initialize.models, independently read 2026-11-13; resolvedModel claude-opus-5-5; supportedEffortLevels includes high; metadata-only, no model turn."
+    },
+    "Fable 5.2": {
+      "verified": true,
+      "model": "claude-fable-5-2",
+      "provider": "claude",
+      "runtime": "claude-code",
+      "evidence": "Wayforge native Claude Code 2.1.321 initialize.models, independently read 2026-11-13; resolvedModel claude-fable-5-2; supportedEffortLevels includes high; metadata-only, no model turn."
     }
   },
   "note": "Only exact IDs verified from native evidence may be selected. Missing model labels remain ineligible; use later eligible preference."

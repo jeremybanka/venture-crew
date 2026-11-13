@@ -1,3 +1,4 @@
+from .check_fixtures import coverage_fixture
 import json
 import copy
 from pathlib import Path
@@ -33,8 +34,13 @@ class FakeGitHub:
 class GitHubTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
-        self.fake=FakeGitHub();self.pub=GitHubPublisher(Path(self.tmp.name).resolve()/'state',gh_executable=GH,runner=self.fake)
-        self.args=dict(authorized_repo='owner/repo',authorized_issue=17,target_base='main',expected_base_sha=SHA,slice_id='one',slices=[dict(id='one',branch='factory/one',head_sha=SHA,author='strider',title='Slice one',body_file='/tmp/planner-only.md',review=dict(reviewer='warden',head_sha=SHA,approved=True,receipt='receipt'),tests=dict(head_sha=SHA,passed=True,proof='proof'))])
+        self.fake=FakeGitHub();self.pub=GitHubPublisher(Path(self.tmp.name).resolve()/'state',gh_executable=GH,runner=self.fake,inventory_reader=lambda repo,head: coverage_fixture(head)['manifest'])
+        self.args=dict(check_repository='/fixture/repo',authorized_repo='owner/repo',authorized_issue=17,target_base='main',expected_base_sha=SHA,slice_id='one',slices=[dict(id='one',branch='factory/one',head_sha=SHA,author='strider',title='Slice one',body_file='/tmp/planner-only.md',review=dict(reviewer='warden',head_sha=SHA,approved=True,receipt='receipt'),tests=dict(head_sha=SHA,passed=True,proof='proof'),check_coverage=coverage_fixture(SHA))])
+    def test_inventory_omission_blocks_before_github(self):
+        self.pub.inventory_reader=lambda repo,head: {'different': 'repository inventory'}
+        result=self.pub.publish(**self.args)
+        self.assertEqual(result['reason'],'check_inventory_does_not_match_repository')
+        self.assertEqual(self.fake.calls,[])
     def test_create_verified_then_retry_idempotent(self):
         self.assertEqual(self.pub.publish(**self.args)['status'],'verified')
         self.assertFalse(self.pub.publish(**self.args)['created']);self.assertEqual(self.fake.creates(),1)
@@ -45,12 +51,12 @@ class GitHubTests(unittest.TestCase):
     def test_unknown_never_blindly_recreated_even_new_instance(self):
         self.fake.create_mode='timeout_before_create'
         self.assertEqual(self.pub.publish(**self.args)['status'],'unknown')
-        self.pub=GitHubPublisher(Path(self.tmp.name).resolve()/'state',gh_executable=GH,runner=self.fake)
+        self.pub=GitHubPublisher(Path(self.tmp.name).resolve()/'state',gh_executable=GH,runner=self.fake,inventory_reader=lambda repo,head: coverage_fixture(head)['manifest'])
         self.assertEqual(self.pub.publish(**self.args)['status'],'unknown');self.assertEqual(self.fake.creates(),1)
     def test_changed_revision_cannot_bypass_unknown_attempt(self):
         self.fake.create_mode='timeout_before_create';self.pub.publish(**self.args)
         item=self.args['slices'][0];item['head_sha']='b'*40
-        item['review']['head_sha']='b'*40;item['tests']['head_sha']='b'*40
+        item['review']['head_sha']='b'*40;item['tests']['head_sha']='b'*40;item['check_coverage']=coverage_fixture('b'*40)
         self.fake.sha='b'*40
         self.assertEqual(self.pub.publish(**self.args)['status'],'unknown');self.assertEqual(self.fake.creates(),1)
     def test_unknown_can_later_reconcile(self):
@@ -92,16 +98,16 @@ class GitHubTests(unittest.TestCase):
         self.pub.runner=changed
         self.assertEqual(self.pub.publish(**self.args)['status'],'unknown')
     def test_absolute_approved_executable_required(self):
-        with self.assertRaises(ValueError):GitHubPublisher(Path(self.tmp.name).resolve()/'state',gh_executable='gh',runner=self.fake)
+        with self.assertRaises(ValueError):GitHubPublisher(Path(self.tmp.name).resolve()/'state',gh_executable='gh',runner=self.fake,inventory_reader=lambda repo,head: coverage_fixture(head)['manifest'])
     def test_expected_base_required_before_calls(self):
         self.args['expected_base_sha']='short'
         with self.assertRaises(ValueError):self.pub.publish(**self.args)
         self.assertEqual(self.fake.calls,[])
     def test_dependent_base_uses_predecessor_reviewed_sha(self):
         first=self.args['slices'][0]
-        first['head_sha']='b'*40;first['review']['head_sha']='b'*40;first['tests']['head_sha']='b'*40
+        first['head_sha']='b'*40;first['review']['head_sha']='b'*40;first['tests']['head_sha']='b'*40;first['check_coverage']=coverage_fixture('b'*40)
         second=copy.deepcopy(first);second.update(id='two',branch='factory/two',body_file='/tmp/two.md',predecessor='one',head_sha='c'*40)
-        second['review']['head_sha']='c'*40;second['tests']['head_sha']='c'*40
+        second['review']['head_sha']='c'*40;second['tests']['head_sha']='c'*40;second['check_coverage']=coverage_fixture('c'*40)
         self.args['slices'].append(second);self.args['slice_id']='two'
         created=[]
         def runner(argv):
@@ -135,7 +141,7 @@ class GitHubTests(unittest.TestCase):
         self.assertEqual(self.fake.calls,[])
     def test_symlink_state_rejected(self):
         path=Path(self.tmp.name)/'link';path.symlink_to(Path(self.tmp.name),target_is_directory=True)
-        with self.assertRaises(ValueError):GitHubPublisher(path,gh_executable=GH,runner=self.fake)
+        with self.assertRaises(ValueError):GitHubPublisher(path,gh_executable=GH,runner=self.fake,inventory_reader=lambda repo,head: coverage_fixture(head)['manifest'])
     def test_created_pr_changed_before_readback_stays_unknown(self):
         original=self.fake.__call__
         def changed(argv):

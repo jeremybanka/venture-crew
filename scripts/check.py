@@ -7,8 +7,8 @@ import sys
 root=Path(__file__).resolve().parents[1]
 rig=json.loads((root/'rig.yaml').read_text()); agent=json.loads((root/'agents/crew/agent.yaml').read_text())
 seats={f"{p['id']}.{m['id']}":m for p in rig['pods'] for m in p['members']}
-expected={'commander','captain','sky-command','strider1','strider2','lancer','pyro','witch','inquisitor','hierophant','cleric','chronicler','deckhand','warden'}
-assert {s.split('.')[1] for s in seats}==expected and len(seats)==14
+expected={'commander','captain','sky-command','strider1','strider2','lancer','pyro','witch','inquisitor','hierophant','cleric','chronicler','deckhand','warden','lookout'}
+assert {s.split('.')[1] for s in seats}==expected and len(seats)==15
 for m in seats.values():
  assert m['profile'] in agent['profiles']
  assert m['runtime'] in ('codex','claude-code')
@@ -28,4 +28,4 @@ for directory in ('budget','hygiene','routing','factory'):
  cmd=[sys.executable,'-m','unittest','discover','-s',str(root/directory),'-p','test*.py','-v']
  if directory in ('budget','routing','factory'): cmd += ['-t',str(root)]
  subprocess.run(cmd,cwd=root,check=True)
-print('14-seat roster, handoff references, startup files, budget, hygiene, routing and factory tests passed.')
+print('15-seat roster, handoff references, startup files, budget, hygiene, routing and factory tests passed.')

@@ -1,3 +1,4 @@
+from .check_fixtures import coverage_fixture
 import copy
 import unittest
 from .publication import plan_publication
@@ -7,7 +8,7 @@ class PublicationTests(unittest.TestCase):
         sha='a'*40
         value=dict(id=key,branch='factory/'+key,head_sha=sha,author='strider-1',title='Slice '+key,body_file='/tmp/'+key+'.md',
                    review=dict(reviewer='warden',head_sha=sha,approved=True,receipt='review:123'),
-                   tests=dict(head_sha=sha,passed=True,proof='test:123'))
+                   tests=dict(head_sha=sha,passed=True,proof='test:123'),check_coverage=coverage_fixture(sha))
         value.update(kw);return value
     def plan(self,slices,**kw):
         args=dict(authorized_repo='owner/repo',authorized_issue=17,target_base='main',slices=slices);args.update(kw)

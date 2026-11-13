@@ -32,7 +32,7 @@ always-spending sessions.
 
 ## What is implemented
 
-- Native RigSpec and AgentSpec with all 14 seats, role guidance and handoff edges.
+- Native RigSpec and AgentSpec with all 15 seats, role guidance and handoff edges.
 - [Culture](CULTURE.md), [SOP](SOP.md), and [guest context](CONTEXT.md).
 - [Independent Claude and Codex budget controllers](budget/README.md): separate
   identities, windows, remaining-percentage floors, permits, freshness, reset
