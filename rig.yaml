@@ -223,6 +223,19 @@
             "WAYFORGE_MODEL_POLICY": "model-preferences.json"
           },
           "effort": "high"
+        },
+        {
+          "id": "lookout",
+          "label": "Lookout",
+          "agent_ref": "local:agents/crew",
+          "profile": "lookout",
+          "runtime": "codex",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "care.lookout",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
         }
       ],
       "edges": []
@@ -328,6 +341,11 @@
       "kind": "can_observe",
       "from": "refinery.warden",
       "to": "work.pyro"
+    },
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "care.lookout"
     }
   ]
 }

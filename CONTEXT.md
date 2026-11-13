@@ -4,7 +4,7 @@ Deployment location: a dedicated checkout inside the Wayforge Lima VM. `/home/cr
 
 The crew serves selected repositories across this VM. `projects.local.json` (see `projects.example.json`) is inventory only, not an admission allowlist, native workspace registration, or authorization to perform work. Each assignment supplies a named project, revision and intent. Native OpenRig queues and task records carry ownership; no parallel RPG task system is introduced.
 
-The manifest declares 14 seats: Commander, Captain, Sky Command, two Striders, Lancer, Pyro, Witch, Inquisitor, Hierophant, Cleric, Chronicler, Deckhand and Warden. Knight and Ranger are absent. Warden includes serialized integration; publication still needs explicit authority.
+The manifest declares 15 seats: Commander, Captain, Sky Command, two Striders, Lancer, Pyro, Witch, Inquisitor, Hierophant, Cleric, Chronicler, Deckhand, Warden and Lookout. Knight and Ranger are absent. Warden includes serialized integration; publication still needs explicit authority.
 
 Runtime assignments are nominal topology, not permanent identities or bypasses of routing. The canonical ordered model policy is model-preferences.json, with high effort for all seats. Only verified entries in model-catalog.json are eligible. Provider-local budgets and session-safe handover gates govern fallback. No native permission overrides are included.
 

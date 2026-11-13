@@ -56,7 +56,7 @@ Check guest disk capacity before activation. Preserve held work and avoid launch
    than guessing a turn ID. Native end-to-end verification is still required. Keep the existing permission posture. Native
    hook discovery/trust and denial behavior need actual end-to-end verification.
 5. **Bounded first activation.** After these gates, launch a minimal implementation
-   and independent-review flow before expanding. Do not launch all 14 seats merely
+   and independent-review flow before expanding. Do not launch all 15 seats merely
    because the topology validates. Supply a real task, project, acceptance proof
    and publication boundary. Verify cleanup-hold behavior as well as success.
 

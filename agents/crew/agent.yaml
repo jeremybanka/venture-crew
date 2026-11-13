@@ -313,6 +313,28 @@
         ],
         "actions": []
       }
+    },
+    "lookout": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/lookout.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
     }
   },
   "resources": {

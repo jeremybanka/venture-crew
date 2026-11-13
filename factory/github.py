@@ -17,6 +17,7 @@ import sqlite3
 import subprocess
 from urllib.parse import quote
 from .publication import plan_publication, _SHA
+from .checks import discover
 
 
 def native_runner(argv):
@@ -24,7 +25,7 @@ def native_runner(argv):
 
 
 class GitHubPublisher:
-    def __init__(self, state_dir, *, gh_executable, runner=native_runner):
+    def __init__(self, state_dir, *, gh_executable, runner=native_runner, inventory_reader=discover):
         if not isinstance(gh_executable,str) or not Path(gh_executable).is_absolute() or any(ord(c)<32 for c in gh_executable):
             raise ValueError('approved_absolute_gh_executable_required')
         self.gh_executable=gh_executable
@@ -34,6 +35,7 @@ class GitHubPublisher:
         if any(p.is_symlink() for p in (self.root,*self.root.parents)): raise ValueError('state_symlink_not_allowed')
         self.root.mkdir(mode=0o700,parents=True,exist_ok=True)
         self.runner=runner
+        self.inventory_reader=inventory_reader
 
     def _run(self, argv):
         if argv[0]!='gh': raise ValueError('unexpected_command')
@@ -68,7 +70,7 @@ class GitHubPublisher:
             raise ValueError('existing_pr_mismatch')
         return {'number':row['number'],'url':row['url']}
 
-    def publish(self, *, authorized_repo, authorized_issue, target_base, expected_base_sha, slices, slice_id):
+    def publish(self, *, authorized_repo, authorized_issue, target_base, expected_base_sha, slices, slice_id, check_repository):
         if not isinstance(expected_base_sha,str) or not _SHA.fullmatch(expected_base_sha):
             raise ValueError('exact_expected_base_sha_required')
         # Planner validates all externally selected fields before any network IO.
@@ -80,6 +82,12 @@ class GitHubPublisher:
         base_sha=(next(p['head_sha'] for p in plans if p['slice_id']==plan['predecessor'])
                   if plan['predecessor'] else expected_base_sha)
         if not plan['ready']:return {'status':'blocked','reason':plan['reason']}
+        # Rebuild from Git objects; an implementor cannot omit a workflow from
+        # an otherwise internally consistent coverage receipt. No network writes
+        # occur until local sources match the reviewed inventory exactly.
+        candidate=next(item for item in slices if item['id']==slice_id)
+        if self.inventory_reader(check_repository, plan['head_sha']) != candidate['check_coverage']['manifest']:
+            return {'status':'blocked','reason':'check_inventory_does_not_match_repository'}
         # Journal lane is repo/head: changed revision/base/issue cannot bypass an unknown create.
         # Full authorization and revision remain in its durable identity record.
         identity={k:plan[k] for k in ('repo','issue','base','head','head_sha')}

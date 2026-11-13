@@ -106,3 +106,35 @@ For linked-worktree Codex hooks, storage may be required in the main checkout.
 Any shared-root dispatcher must be explicitly approved, narrowly scoped to the
 authorized task worktree, and inert for unrelated sessions. Keep existing native
 sandbox and approval settings. No worker may widen scope or modify quota gates.
+
+## Check discovery before PR publication
+
+Before opening or updating a candidate PR, inventory checks from the exact head:
+`python3 -m factory.checks --repo <canonical-worktree> --head <full-sha>`.
+Review every full workflow, local action, package script and hook/task config.
+Do not assume package-scoped tests or a pre-commit hook cover repository-wide
+checks. In Atom.io, both `lint:unused` and `lint:unused:production` are relevant
+Knip modes. Workflow matrices, conditions, reusable actions, working directories
+and remote actions require inspection, not blind execution of extracted text.
+Follow referenced check definitions until their obligations are understood.
+
+Warden maps every discovered obligation to successful exact-head command receipts
+or an explicit reason it is not applicable. Include setup/environment, command,
+exit status and proof reference. A blocked/unavailable check is not a passing
+check or an exclusion. Full CI-only work may require an approved equivalent or
+human exception; do not silently waive it. Regenerate inventory and evidence
+when the head changes. Trusted publication callers must regenerate and compare
+the inventory against the repository; receipt self-attestation is not enough.
+The publication planner requires `check_coverage`, even when generic test proof
+is present. Keep cheap formatting checks at pre-commit; put complete applicable
+coverage at pre-publication rather than running every matrix on every commit.
+
+## Post-publication CI ownership
+
+Captain assigns every published factory PR to Lookout with repository, PR,
+owner and slice. Start the read-only observer and preserve its state under the
+ignored runtime directory. Lookout reports current-head failures/missing checks
+and routes repairs to the worker; Cleric owns systemic coverage/tooling fixes.
+Warden still owns independent review. Neither seat automatically merges.
+A configured seat alone is not a running watch: confirm observer health and
+consume its durable changed-status reports. Human merges remain the endpoint.
