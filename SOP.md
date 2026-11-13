@@ -94,18 +94,25 @@ runtimes are placeholders for initial topology, never a bypass of routing.
 
 ## Guest working environment
 
-The rig's guest is its working environment. Registered repositories already in
-the guest are the canonical project checkouts. Work with those repositories;
-create task-owned Git worktrees inside the selected repository where isolation
-is useful. Do not create an independent clone as a routine trust, tooling, or
-permission workaround. Preserve human branches, uncommitted work and unrelated
-worktrees. Report a real blocker and obtain any required scoped trust approval
-instead of silently substituting another checkout.
+Every seat's default workspace is the Wayforge guest home (`/home/jem`, or `~`
+inside the guest), not the rig repository, a project-specific clone, or one
+permanently selected product repository. The crew serves all authorized projects
+already checked out under that home. Each assignment names its canonical project
+and creates or reuses its task-owned worktree under `<project>/.worktrees/` when
+isolation is needed. Active task sessions can keep their assigned worktree until
+a safe checkpoint/handover; do not move a live worker merely to change a default.
+
+Preserve human branches, uncommitted work and unrelated worktrees. Do not create
+independent clones as a routine trust, tooling or permission workaround. Guest
+home as a working directory does not grant broader filesystem, credential,
+publication or project authorization. Task scope and native security controls
+remain binding. Report real blockers and obtain required scoped trust approval.
 
 For linked-worktree Codex hooks, storage may be required in the main checkout.
 Any shared-root dispatcher must be explicitly approved, narrowly scoped to the
-authorized task worktree, and inert for unrelated sessions. Keep existing native
-sandbox and approval settings. No worker may widen scope or modify quota gates.
+authorized task worktree/session, and inert for unrelated sessions. Keep existing
+native sandbox and approval settings. No worker may widen scope or modify quota
+gates. A common home directory never authorizes installing broad home-wide hooks.
 
 ## Check discovery before PR publication
 
