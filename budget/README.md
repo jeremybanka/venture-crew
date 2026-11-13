@@ -313,8 +313,9 @@ reserve and remains governed by the existing model routing checks.
 ### Rig-owned Claude hook plugins
 
 `budget.claude_plugin.build` / `write_plugin` prepare a local plugin artifact
-containing the existing native quota hooks. Supply its absolute directory through
-an OpenRig Claude member's `plugin_dirs`. Pinned OpenRig 0.7.3 projects a private
+containing the existing native quota hooks. Declare its path relative to the rig
+source root in an OpenRig Claude member's `plugin_dirs` (absolute paths are rejected).
+Pinned OpenRig 0.7.3 projects a private
 seat copy and supplies native `--plugin-dir`; quota settings need not be installed
 in guest home or any product checkout. This is launch-local configuration, not a
 new message bus. Inter-agent work, notifications and wakes remain native OpenRig
