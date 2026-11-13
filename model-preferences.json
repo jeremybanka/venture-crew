@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "preferences": {
+    "bridge.commander": [
+      "Sol",
+      "Opus"
+    ],
+    "bridge.captain": [
+      "Opus",
+      "Sol"
+    ],
+    "bridge.sky-command": [
+      "Fable 5.2",
+      "Sol"
+    ],
+    "work.strider1": [
+      "Sol",
+      "Opus"
+    ],
+    "work.strider2": [
+      "Opus",
+      "Sol"
+    ],
+    "work.lancer": [
+      "Sol",
+      "Opus"
+    ],
+    "work.pyro": [
+      "Opus",
+      "Sol"
+    ],
+    "inquiry.witch": [
+      "Opus",
+      "Sol"
+    ],
+    "inquiry.inquisitor": [
+      "Sol",
+      "Opus"
+    ],
+    "inquiry.hierophant": [
+      "Opus",
+      "Sol"
+    ],
+    "care.cleric": [
+      "Sol",
+      "Opus"
+    ],
+    "care.chronicler": [
+      "Fable 5.2",
+      "Sol"
+    ],
+    "care.deckhand": [
+      "Sol",
+      "Opus"
+    ],
+    "refinery.warden": [
+      "Opus",
+      "Sol"
+    ]
+  },
+  "unresolved_seats": [],
+  "note": "Exact human model labels; resolve against verified native catalog, never infer IDs.",
+  "default_effort": "high",
+  "effort_overrides": {}
+}

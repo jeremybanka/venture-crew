@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "models": {
+    "Sol": {
+      "verified": true,
+      "model": "gpt-6.1-sol",
+      "provider": "codex",
+      "runtime": "codex",
+      "evidence": "Wayforge native Codex 0.167.1 model/list, 2026-11-13: GPT-6.1-Sol, hidden false; selected current 6.1 generation for requested Sol."
+    }
+  },
+  "note": "Only exact IDs verified from native evidence may be selected. Missing model labels remain ineligible; use later eligible preference."
+}

@@ -1,0 +1,92 @@
+# Expedition procedures
+
+## Intake to closure
+
+1. Commander records the goal, original words and later changes. Sky Command plans bounded slices and acceptance proof. Hierophant resolves genuine judgment questions through reconciliation.
+2. Captain assigns a native queue task, project, revision, owner and next continuation. Check the relevant provider budget, resource reservations and guest disk before admitting a phase. Work on unrelated admitted tasks may continue while a question is held.
+3. Create a task worktree under the project's ignored `.worktrees/` with a stable task identifier. Register its ownership before work. Keep scratch in explicit `.scratch/` or temporary locations. Do not make extra full clones or scatter worktrees in home or `/tmp`.
+4. The worker reads project instructions, implements and supplies exact candidate commits, tests and limitations. Positive/negative size goals never replace acceptance criteria.
+5. Warden independently reviews in a separate task-owned tree. Repairs return to the appropriate implementor. Inquisitor diagnoses major causes; Witch runs bounded experiments. Questions go to Hierophant, which owns reconciliation.
+6. Warden holds the integration slot, rebases onto the current target, verifies the new exact revision, and performs only authorized integration. Substantive conflict resolutions or evaluator repairs need independent review. Serialize builds and integration. Push/publish/deploy are separate authorization boundaries.
+7. Commander returns the result. Chronicler preserves rationale. Close the task and request Deckhand retirement. Work can be delivered with a cleanup hold but cannot be called fully retired until resolved.
+
+## Budget lifecycle
+
+Use `budget/README.md`. Keep separate Claude and Codex state, account bindings, observation times, allowance windows, reset times, floors and permits. Do not sum percentages or borrow allowance. Choose eligible models in the ordered seat preference list; each uses only its own provider budget. Default admission is closed. Account identity, required windows and concurrency are setup policy; reserve floors are chosen afresh for each opening, not fixed installation settings. Each bounded turn/phase requires admission; continuation needs another permit.
+
+Account changes, missing/expired observations, refills and interrupted turns require explicit reconciliation. Do not expire permits blindly while a process may still be spending. Native hooks must be loaded and trusted in the actual harness before claiming enforcement. Conversation during a pause must not start downstream work. No paid/model probes merely to observe allowance.
+
+## Hygiene lifecycle
+
+Use `hygiene/README.md` and its fixture-tested CLI. Queue-task closure requests inspection, not forced deletion. Pauses remain owned and locked. Seven days is an inspection backstop, never automatic destruction.
+
+Check registration, containment, locks, active ownership, staged/unstaged/untracked/ignored content and unpushed commits. Preserve uncertainties as cleanup holds with owner and next step. Do not label arbitrary untracked files scratch. A stash is not durable proof. Only normal worktree removal is allowed after explicit retirement and verified preservation; never force-remove or delete branches as a fallback. Push only to an authorized destination. Idle full clones require separate inventory and decisions.
+
+Deckhand carries routine hygiene; Cleric improves recurring failure prevention. If disk is tight, stop new work and resolve holds rather than sacrifice unique work.
+
+## Recovery
+
+Restore from native queue records, role guidance and exact artifact evidence. Check that old workers ended before releasing permits or declaring a tree inactive. A daemon restart does not prove a model turn stopped. Keep captured failure details in ignored state and a concise durable task record. Do not change credential boundaries, bypass permissions, or restart services unrelated to the rig.
+
+## Opening the factory and delivering a PR stack
+
+Jeremy's command “open the factory with a floor of 50/40” means preserve 50% of
+Codex allowance and 40% of Claude allowance for this opening. It is not 50/40
+spending, a permanent default, or permission to reopen automatically after reset.
+Apply each provider's reserve to every configured applicable allowance window.
+Commander records the instruction verbatim and Captain opens the approved queue
+scope only for providers with verified identity, fresh quota, working native
+hooks and the trusted runtime. An unavailable provider does not block the other. An illustrative example in a discussion is not a
+live opening instruction. See budget/README.md for the budget-only command.
+
+Provider-local stopping: a floor, reset/refill, invalid telemetry or stale
+observation closes only the affected provider to new work. Its gate stays latched
+until explicitly reopened. The other eligible provider may continue through the
+seat's ordered preference list. Never transfer allowance, reopen on reset, change
+models mid-turn, or release an outstanding permit merely to switch providers.
+Already in-flight requests may finish or overshoot a reserve. Preserve exact
+completion evidence and a durable checkpoint before changing runtime/model.
+
+An opening spends effort on already authorized, ready queue work, not invented
+projects or work blocked on human decisions. Every item must identify repository,
+base branch, intended outcome, acceptance proof, authorized publication destination
+and dependencies. Captain records the opening and native queue lineage. Missing
+scope or repository publication authorization is a hold, not a reason to guess.
+
+Warden's refinery remit produces an independently reviewed PR stack for Jeremy to
+merge, rather than merging it for him. The first PR targets the authorized base;
+each dependent PR targets its predecessor's branch. Independent work need not be
+artificially stacked. Track branch, exact head SHA, base SHA, predecessor PR, review
+receipt and tests in the native queue record. Publish draft PRs while incomplete;
+mark ready only after acceptance evidence. Never enable auto-merge or merge these
+PRs. Rebase/restack through the integration slot, preserve published work, and
+repeat affected checks and independent review for material conflict resolutions.
+
+At a budget pause, leave truthful PR descriptions and durable next steps; partial
+work stays draft. Do not start extra model turns merely to polish shutdown notes.
+Chronicler records the stack order and remaining caveats, and Commander reports
+which PRs are ready, which are draft, and the reason work paused. Deckhand retains
+unmerged or otherwise uncertain branches/worktrees; publishing a PR is not proof
+that deleting its unique local work is safe.
+
+This is the target operating procedure, not a claim that a queue dispatcher or
+native-harness activation has been completed. The local budget primitive does not
+start OpenRig or create PRs by itself.
+
+## Ordered models and safe runtime handover
+
+`model-preferences.json` records Jeremy's exact ordering. `model-catalog.json` is
+a verified native-ID mapping, not a list of guessed aliases. Unknown entries are
+ineligible; continue to a verified eligible later preference. Inquisitor uses Sol, then Opus, as explicitly selected by Jeremy.
+
+The routing planner checks provider-local admission, native model identity, harness
+readiness and same-seat active permits. A runtime/model change requires the old
+session's exact stopped evidence and a durable checkpoint recording task lineage,
+branch/head, tests, remaining work and continuation owner. Native OpenRig handover
+must carry this checkpoint and the seat's provider-specific hook configuration.
+A failed rebuild is a hold, not permission to duplicate the worker.
+
+The planner returns a decision; it does not start or rebuild native sessions.
+Until runtime/model selection and hook-preserving native handover are verified
+end-to-end, automatic model switching is not operational. Nominal `rig.yaml`
+runtimes are placeholders for initial topology, never a bypass of routing.

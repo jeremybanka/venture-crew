@@ -1,0 +1,12 @@
+{
+  "name": "venture-crew",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wayforge OpenRig crew, budget controls and worktree hygiene",
+  "dependencies": {
+    "@openrig/cli": "0.7.3"
+  },
+  "scripts": {
+    "validate": "node scripts/validate.mjs"
+  }
+}

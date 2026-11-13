@@ -1,0 +1,333 @@
+{
+  "version": "0.2",
+  "name": "wayforge-expedition",
+  "summary": "VM-owned cross-repository expedition with independent budgets and safe hygiene.",
+  "culture_file": "CULTURE.md",
+  "startup": {
+    "files": [
+      {
+        "path": "SOP.md",
+        "delivery_hint": "send_text",
+        "required": true
+      },
+      {
+        "path": "CONTEXT.md",
+        "delivery_hint": "send_text",
+        "required": true
+      }
+    ],
+    "actions": []
+  },
+  "pods": [
+    {
+      "id": "bridge",
+      "label": "Direction and coordination",
+      "members": [
+        {
+          "id": "commander",
+          "label": "Commander",
+          "agent_ref": "local:agents/crew",
+          "profile": "commander",
+          "runtime": "codex",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "bridge.commander",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        },
+        {
+          "id": "captain",
+          "label": "Captain",
+          "agent_ref": "local:agents/crew",
+          "profile": "captain",
+          "runtime": "claude-code",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "bridge.captain",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        },
+        {
+          "id": "sky-command",
+          "label": "Sky Command",
+          "agent_ref": "local:agents/crew",
+          "profile": "sky-command",
+          "runtime": "claude-code",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "bridge.sky-command",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        }
+      ],
+      "edges": [
+        {
+          "kind": "delegates_to",
+          "from": "captain",
+          "to": "sky-command"
+        },
+        {
+          "kind": "collaborates_with",
+          "from": "commander",
+          "to": "captain"
+        }
+      ]
+    },
+    {
+      "id": "work",
+      "label": "Implementation",
+      "members": [
+        {
+          "id": "strider1",
+          "label": "Strider 1",
+          "agent_ref": "local:agents/crew",
+          "profile": "strider1",
+          "runtime": "codex",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "work.strider1",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        },
+        {
+          "id": "strider2",
+          "label": "Strider 2",
+          "agent_ref": "local:agents/crew",
+          "profile": "strider2",
+          "runtime": "claude-code",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "work.strider2",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        },
+        {
+          "id": "lancer",
+          "label": "Lancer",
+          "agent_ref": "local:agents/crew",
+          "profile": "lancer",
+          "runtime": "codex",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "work.lancer",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        },
+        {
+          "id": "pyro",
+          "label": "Pyro",
+          "agent_ref": "local:agents/crew",
+          "profile": "pyro",
+          "runtime": "claude-code",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "work.pyro",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        }
+      ],
+      "edges": []
+    },
+    {
+      "id": "inquiry",
+      "label": "Investigation and decisions",
+      "members": [
+        {
+          "id": "witch",
+          "label": "Witch",
+          "agent_ref": "local:agents/crew",
+          "profile": "witch",
+          "runtime": "claude-code",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "inquiry.witch",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        },
+        {
+          "id": "inquisitor",
+          "label": "Inquisitor",
+          "agent_ref": "local:agents/crew",
+          "profile": "inquisitor",
+          "runtime": "codex",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "inquiry.inquisitor",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        },
+        {
+          "id": "hierophant",
+          "label": "Hierophant",
+          "agent_ref": "local:agents/crew",
+          "profile": "hierophant",
+          "runtime": "claude-code",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "inquiry.hierophant",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        }
+      ],
+      "edges": []
+    },
+    {
+      "id": "care",
+      "label": "Crew and ship care",
+      "members": [
+        {
+          "id": "cleric",
+          "label": "Cleric",
+          "agent_ref": "local:agents/crew",
+          "profile": "cleric",
+          "runtime": "codex",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "care.cleric",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        },
+        {
+          "id": "chronicler",
+          "label": "Chronicler",
+          "agent_ref": "local:agents/crew",
+          "profile": "chronicler",
+          "runtime": "claude-code",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "care.chronicler",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        },
+        {
+          "id": "deckhand",
+          "label": "Deckhand",
+          "agent_ref": "local:agents/crew",
+          "profile": "deckhand",
+          "runtime": "codex",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "care.deckhand",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        }
+      ],
+      "edges": []
+    },
+    {
+      "id": "refinery",
+      "label": "Independent review and integration",
+      "members": [
+        {
+          "id": "warden",
+          "label": "Warden",
+          "agent_ref": "local:agents/crew",
+          "profile": "warden",
+          "runtime": "claude-code",
+          "cwd": ".",
+          "env": {
+            "WAYFORGE_SEAT": "refinery.warden",
+            "WAYFORGE_MODEL_POLICY": "model-preferences.json"
+          },
+          "effort": "high"
+        }
+      ],
+      "edges": []
+    }
+  ],
+  "edges": [
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "work.strider1"
+    },
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "work.strider2"
+    },
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "work.lancer"
+    },
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "work.pyro"
+    },
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "inquiry.witch"
+    },
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "inquiry.inquisitor"
+    },
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "inquiry.hierophant"
+    },
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "care.cleric"
+    },
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "care.chronicler"
+    },
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "care.deckhand"
+    },
+    {
+      "kind": "delegates_to",
+      "from": "bridge.captain",
+      "to": "refinery.warden"
+    },
+    {
+      "kind": "escalates_to",
+      "from": "inquiry.hierophant",
+      "to": "bridge.commander"
+    },
+    {
+      "kind": "can_observe",
+      "from": "refinery.warden",
+      "to": "work.strider1"
+    },
+    {
+      "kind": "can_observe",
+      "from": "refinery.warden",
+      "to": "work.strider2"
+    },
+    {
+      "kind": "can_observe",
+      "from": "refinery.warden",
+      "to": "work.lancer"
+    },
+    {
+      "kind": "can_observe",
+      "from": "refinery.warden",
+      "to": "work.pyro"
+    }
+  ]
+}

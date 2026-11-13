@@ -1,0 +1,391 @@
+{
+  "name": "wayforge-crew",
+  "version": "1.0",
+  "description": "Expedition role profiles",
+  "defaults": {
+    "runtime": "codex"
+  },
+  "profiles": {
+    "commander": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/commander.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "captain": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/captain.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "sky-command": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/sky-command.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "strider1": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/strider1.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "strider2": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/strider2.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "lancer": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/lancer.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "pyro": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/pyro.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "witch": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/witch.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "inquisitor": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/inquisitor.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "hierophant": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/hierophant.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "cleric": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/cleric.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "chronicler": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/chronicler.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "deckhand": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/deckhand.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    },
+    "warden": {
+      "uses": {
+        "skills": [],
+        "guidance": [],
+        "subagents": [],
+        "plugins": [
+          "openrig-core"
+        ],
+        "runtime_resources": []
+      },
+      "startup": {
+        "files": [
+          {
+            "path": "guidance/warden.md",
+            "orientation": "role",
+            "delivery_hint": "send_text",
+            "required": true
+          }
+        ],
+        "actions": []
+      }
+    }
+  },
+  "resources": {
+    "plugins": [
+      {
+        "id": "openrig-core",
+        "source": {
+          "kind": "local",
+          "path": "openrig-home:plugins/openrig-core"
+        }
+      }
+    ],
+    "guidance": [
+      {
+        "id": "commander",
+        "path": "guidance/commander.md"
+      },
+      {
+        "id": "captain",
+        "path": "guidance/captain.md"
+      },
+      {
+        "id": "sky-command",
+        "path": "guidance/sky-command.md"
+      },
+      {
+        "id": "strider1",
+        "path": "guidance/strider1.md"
+      },
+      {
+        "id": "strider2",
+        "path": "guidance/strider2.md"
+      },
+      {
+        "id": "lancer",
+        "path": "guidance/lancer.md"
+      },
+      {
+        "id": "pyro",
+        "path": "guidance/pyro.md"
+      },
+      {
+        "id": "witch",
+        "path": "guidance/witch.md"
+      },
+      {
+        "id": "inquisitor",
+        "path": "guidance/inquisitor.md"
+      },
+      {
+        "id": "hierophant",
+        "path": "guidance/hierophant.md"
+      },
+      {
+        "id": "cleric",
+        "path": "guidance/cleric.md"
+      },
+      {
+        "id": "chronicler",
+        "path": "guidance/chronicler.md"
+      },
+      {
+        "id": "deckhand",
+        "path": "guidance/deckhand.md"
+      },
+      {
+        "id": "warden",
+        "path": "guidance/warden.md"
+      }
+    ]
+  },
+  "startup": {
+    "files": [],
+    "actions": []
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "note": "Example only. Copy to ignored projects.local.json and supply local paths. Inventory is not authorization or native registration.",
+  "projects": [
+    {
+      "name": "example-project",
+      "path": "/absolute/path/to/example-project"
+    }
+  ]
+}

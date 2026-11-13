@@ -1,0 +1,14 @@
+node_modules/
+.state/
+.scratch/
+.worktrees/
+__pycache__/
+*.pyc
+.env
+*.sqlite3*
+.openrig/
+.claude/settings.local.json
+.codex/config.toml
+
+# Machine-specific inventory must not be published.
+projects.local.json
