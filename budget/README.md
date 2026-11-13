@@ -309,3 +309,23 @@ Limit: cached usage is a last-known measurement, not a real-time guarantee. Usag
 may cross a reserve between successful refreshes; actual provider quota errors
 still stop execution. Model-specific Fable exhaustion is not a provider-wide
 reserve and remains governed by the existing model routing checks.
+
+### Rig-owned Claude hook plugins
+
+`budget.claude_plugin.build` / `write_plugin` prepare a local plugin artifact
+containing the existing native quota hooks. Supply its absolute directory through
+an OpenRig Claude member's `plugin_dirs`. Pinned OpenRig 0.7.3 projects a private
+seat copy and supplies native `--plugin-dir`; quota settings need not be installed
+in guest home or any product checkout. This is launch-local configuration, not a
+new message bus. Inter-agent work, notifications and wakes remain native OpenRig
+queue/handoff/watchdog responsibilities.
+
+The artifact is bound to an exact native session name, inert for other sessions,
+and changes no permission mode or allowlist. It uses the same account-bound
+controller, native prompt identity, 40/40 opening and fail-closed admission as the
+existing adapter. Preparation is not activation: verify the actual launch loads
+the plugin and denies a closed lane before admitting model work. Preserve native
+workspace trust and request any required confirmation rather than bypassing it.
+The helper refuses to overwrite an existing artifact. Rematerialization/handover
+must preserve the plugin in the recorded native launch configuration; a copied
+file alone is not proof that a session loads it.
