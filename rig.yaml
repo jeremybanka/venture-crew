@@ -347,5 +347,6 @@
       "from": "bridge.captain",
       "to": "care.lookout"
     }
-  ]
+  ],
+  "permission_policy": "builtin:auto"
 }
