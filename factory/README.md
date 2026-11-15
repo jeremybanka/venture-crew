@@ -277,6 +277,19 @@ before writes and prevents blind retries after ambiguous outcomes, even with a
 changed revision. Post-write membership/order/revision readback must pass. API
 read/write races remain possible and are reported as unknown rather than success.
 No PR promotion, stack edits/deletion, branch push, merge or auto-merge is exposed.
-This is a callable adapter with mocked tests, not an installed automatic dispatcher
-or evidence that a real stack has been registered. Preserve the journal across
+The `publish --execute` workflow invokes this adapter automatically after verified
+normal publication when the selected slice has an eligible predecessor chain.
+It registers only that chain, never unrelated siblings or missing predecessor PRs.
+Mocked tests are not evidence that any real stack has been registered. Preserve the journal across
 retries and do not create a fresh state directory to evade uncertain results.
+
+### Publication and stack workflow result
+
+`publish --execute` preserves the PR publication receipt separately from the
+stack outcome. A stack hold or uncertain write does not erase a verified PR or
+justify creating it again. Single-slice publication does not create a stack.
+Every ancestor must have current independent acceptance, exact check inventory,
+verified remote refs and an existing normal PR. Existing conflicting membership
+(including a shorter stack that needs extension) remains an explicit hold; this
+workflow does not silently edit an existing stack. Runtime/account/security gates
+and the prohibition on automatic merge are unchanged.

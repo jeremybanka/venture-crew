@@ -28,7 +28,11 @@ def main():
    out=intake_selected(repository=args.repo,number=args.issue,gh=args.gh,rig=args.rig,state_dir=args.state_dir,context=read(args.context))
   else:
    from .github import GitHubPublisher
-   out=GitHubPublisher(args.state_dir,gh_executable=args.gh).publish(authorized_repo=args.repo,authorized_issue=args.issue,target_base=args.base,expected_base_sha=args.base_sha,slices=read(args.slices),slice_id=args.slice_id,check_repository=args.check_repository)
+   from .stacks import StackPublisher
+   from .workflow import publish_with_stack
+   publisher=GitHubPublisher(args.state_dir,gh_executable=args.gh)
+   stacks=StackPublisher(Path(args.state_dir)/'native-stacks',gh_executable=args.gh)
+   out=publish_with_stack(publisher,stacks,authorized_repo=args.repo,authorized_issue=args.issue,target_base=args.base,expected_base_sha=args.base_sha,slices=read(args.slices),slice_id=args.slice_id,check_repository=args.check_repository)
   print(json.dumps(out,indent=2,allow_nan=False));return 2 if isinstance(out,dict) and (out.get('status') in ('blocked','unknown','reconciliation_required') or out.get('state')=='unknown') else 0
  except Exception as e:
   print(json.dumps({'status':'blocked','error':type(e).__name__,'reason':str(e)}));return 2

@@ -156,3 +156,13 @@ work as well as future work. Capturing images locally is not sufficient delivery
 Captain owns the PR attachment/link check; the independent reviewer owns checking
 that the images actually demonstrate the relevant change. Missing evidence stays
 an explicit delivery hold, never an implicit waiver or a claim of completion.
+
+## Native stack registration
+
+For eligible dependent normal PRs, Captain uses the explicit scoped publication
+workflow (`python3 -m factory publish --execute`) so the reviewed predecessor
+chain is registered with GitHub's native stacks API after verified publication.
+Only the selected slice ancestry is included; unrelated work stays separate.
+Retain exact evidence and durable retry state. Read both PR and stack outcomes:
+a stack hold never authorizes duplicate creation, implicit draft promotion,
+unreviewed membership edits or automatic merge.

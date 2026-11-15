@@ -13,3 +13,15 @@ Preserve Scrubs clean/dirty boundaries and Wayfarer CI isolation. Do not change 
 ## Factory openings
 
 An explicit factory opening selects temporary Codex/Claude reserves in that order (50/40 means 50%/40% remaining). Admit only authorized queued work under that opening. Stop only the affected provider on floor/reset/uncertain telemetry. Continue on an eligible ordered model preference using its own budget, but require exact stopped-session evidence and durable checkpoint for runtime/model handover. Never reopen a provider automatically. Follow the PR-stack procedure in SOP.md.
+
+## Native PR stacks
+
+Use the reviewed `python3 -m factory publish --execute` workflow for authorized
+slice publication, not an ad hoc PR-create command. It creates normal PRs and
+registers the eligible selected predecessor chain through GitHub's native stacks
+API. Supply authenticated exact review/check receipts and preserve its private
+state directory across retries. Verify both returned publication and stack
+receipts; a verified PR with a blocked/unknown stack is not stack completion.
+Do not duplicate a PR or stack to clear a hold, promote drafts implicitly, extend
+conflicting stacks by guesswork, or merge automatically. Route unavailable API,
+missing ancestry/evidence or existing membership conflicts as explicit blockers.
