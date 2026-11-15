@@ -12,3 +12,10 @@ __pycache__/
 
 # Machine-specific inventory must not be published.
 projects.local.json
+
+# Deployed inventory, local overrides, private incident evidence and metadata.
+projects.json
+.commander-runtime.yaml
+docs/operations/factory-blockers.md
+._*
+.scrubs-dirty-cache/

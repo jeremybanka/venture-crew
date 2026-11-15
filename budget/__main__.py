@@ -2,6 +2,8 @@
 import argparse
 import json
 import os
+import queue
+import time
 from pathlib import Path
 import signal
 import sys
@@ -22,7 +24,8 @@ def main():
     sub=p.add_subparsers(dest='cmd',required=True)
     for name in ('status','pause'):
         a=sub.add_parser(name); a.add_argument('provider',choices=PROVIDERS)
-    a=sub.add_parser('configure'); a.add_argument('provider',choices=PROVIDERS); a.add_argument('--account',required=True); a.add_argument('--floors',required=True,help='JSON object of required window -> remaining percent floor'); a.add_argument('--freshness',type=int,default=300); a.add_argument('--max-active',type=int,default=1)
+    a=sub.add_parser('configure'); a.add_argument('provider',choices=PROVIDERS); a.add_argument('--account',required=True); a.add_argument('--floors',required=True,help='JSON object of required window -> remaining percent floor'); a.add_argument('--freshness',type=int,default=300); a.add_argument('--max-active',type=int,default=1); a.add_argument('--reserve-windows',help='JSON list of windows receiving the opening reserve; defaults to all')
+    a=sub.add_parser('set-freshness'); a.add_argument('provider',choices=PROVIDERS); a.add_argument('--seconds',type=int,required=True)
     a=sub.add_parser('open-factory'); a.add_argument('--floors',required=True,help='Codex/Claude reserve percentages, e.g. 50/40'); a.add_argument('--reason',required=True)
     a=sub.add_parser('arm'); a.add_argument('provider',choices=PROVIDERS); a.add_argument('--reason',required=True)
     a=sub.add_parser('observe'); a.add_argument('provider',choices=PROVIDERS); a.add_argument('--file',default='-')
@@ -30,6 +33,7 @@ def main():
     a=sub.add_parser('release'); a.add_argument('provider',choices=PROVIDERS); a.add_argument('--session',required=True); a.add_argument('--turn',required=True); a.add_argument('--reason',default='completed')
     a=sub.add_parser('reconcile-session'); a.add_argument('provider',choices=PROVIDERS); a.add_argument('--session',required=True); a.add_argument('--reason',required=True); a.add_argument('--confirmed-stopped',action='store_true')
     a=sub.add_parser('observe-codex'); a.add_argument('--codex',default='codex'); a.add_argument('--once',action='store_true'); a.add_argument('--interval',type=int,default=60); a.add_argument('--print-only',action='store_true')
+    a=sub.add_parser('observe-claude'); a.add_argument('--claude',default='claude'); a.add_argument('--once',action='store_true'); a.add_argument('--interval',type=int,default=300); a.add_argument('--print-only',action='store_true'); a.add_argument('--observe-only-window',action='append',default=[]); a.add_argument('--sample-file')
     a=sub.add_parser('claude-statusline'); a.add_argument('--file',default='-')
     args=p.parse_args()
     try:
@@ -38,7 +42,104 @@ def main():
         if args.cmd=='claude-statusline':
             from .adapters import claude_statusline
             print(json.dumps(claude_statusline(read_json(args.file)),allow_nan=False)); return 0
-        c = None if args.cmd=='observe-codex' and args.print_only else Controller(args.db, readonly=args.cmd=='status')
+        c = None if args.cmd in ('observe-codex','observe-claude') and args.print_only else Controller(args.db, readonly=args.cmd=='status')
+        if args.cmd=='observe-claude':
+            from .native_claude import observe, enforce_windows, safe_error, persist_sample, NativeClaude, auth_metadata
+            from .refresh_guard import RefreshGuard
+            import hashlib
+            if args.print_only and args.sample_file: raise ValueError('print_only_cannot_write_sample')
+            if not 300 <= args.interval <=1800: raise ValueError('interval_must_be_300_to_1800')
+            stop=threading.Event()
+            signal.signal(signal.SIGTERM,lambda *_:stop.set()); signal.signal(signal.SIGINT,lambda *_:stop.set())
+            client=None
+            guard=RefreshGuard()
+            try:
+                while not stop.is_set():
+                    with guard.locked() as refresh:
+                        if stop.is_set(): break
+                        delay=guard.wait_seconds(refresh)
+                        refresh_identity=refresh.get('identity')
+                        if delay:
+                            # This applies equally to --once and --print-only.
+                            # Never create a native client merely to serve cache.
+                            try:
+                                identity=hashlib.sha256(json.dumps(auth_metadata()).encode()).hexdigest()
+                                cached=guard.cached(refresh,identity)
+                                if refresh.get('identity') and identity!=refresh['identity'] and not args.print_only:
+                                    c.invalidate('claude','claude_account_metadata_changed')
+                            except Exception:
+                                cached=None
+                                if not args.print_only: c.invalidate('claude','claude_account_metadata_changed')
+                            if cached is not None:
+                                # Caller projection mismatch is not an identity
+                                # failure and cannot invalidate a valid collector.
+                                try:
+                                    cached=enforce_windows(cached,args.observe_only_window,
+                                        None if args.print_only else c.status('claude')['floors'])
+                                except ValueError:
+                                    cached=None
+                            if args.once:
+                                result=(cached if args.print_only else c.status('claude')) if cached else None
+                                print(json.dumps({'cached':True,'sample':result,'retry_after_seconds':delay}
+                                    if result else {'error':'refresh_throttled','retry_after_seconds':delay}),flush=True)
+                                return 0 if result else 1
+                        else:
+                            # Reserve before initialization, not merely before
+                            # get_usage; constructor/initialization can fail too.
+                            guard.reserve(refresh,args.interval)
+                            try:
+                                identity=hashlib.sha256(json.dumps(auth_metadata()).encode()).hexdigest()
+                                if client is None: client=NativeClaude(args.claude)
+                                sample=observe(client=client)
+                                if identity!=hashlib.sha256(json.dumps(auth_metadata()).encode()).hexdigest():
+                                    raise ValueError('claude_account_metadata_changed')
+                                raw_sample=sample
+                                sample=enforce_windows(sample,args.observe_only_window,
+                                    None if args.print_only else c.status('claude')['floors'])
+                                result=sample if args.print_only else c.observe('claude',sample)
+                                guard.complete(refresh,raw_sample,identity,args.interval)
+                                refresh_identity=identity
+                                if args.sample_file and result.get('accepted') is True:
+                                    persist_sample(args.sample_file,{'accepted':True,'sample':sample})
+                                print(json.dumps(result,allow_nan=False),flush=True)
+                                if args.once: return 0 if args.print_only or result.get('accepted') else 1
+                            except Exception as error:
+                                reason=safe_error(error)
+                                transient=reason=='claude_seeded_or_incomplete_quota' or isinstance(error,(TimeoutError,queue.Empty))
+                                result={'fallback_retained':False,'reason':reason}
+                                if transient and not args.print_only:
+                                    try:
+                                        result=c.refresh_failed('claude',client.current_account_id(),reason)
+                                    except Exception as identity_error:
+                                        transient=False; reason=safe_error(identity_error)
+                                if not transient and not args.print_only:
+                                    c.invalidate('claude',reason)
+                                guard.failed(refresh,args.interval)
+                                if args.sample_file:
+                                    persist_sample(args.sample_file+'.refresh.json',dict(result,error=reason))
+                                print(json.dumps(dict(result,error=reason)),flush=True)
+                                if not transient and client:
+                                    client.close(); client=None
+                                if args.once: return 1
+                            delay=guard.wait_seconds(refresh)
+                    deadline=time.monotonic()+delay
+                    while not stop.wait(min(15,max(0,deadline-time.monotonic()))):
+                        if not args.print_only:
+                            try:
+                                state=c.status('claude')
+                                if refresh_identity and hashlib.sha256(json.dumps(auth_metadata()).encode()).hexdigest()!=refresh_identity:
+                                    raise ValueError('claude_account_metadata_changed')
+                                if client is not None and client.current_account_id()!=state['account']:
+                                    raise ValueError('claude_account_metadata_changed')
+                                if state['gate_reason'] in ('stale_observation','reset_expired','clock_rollback'):
+                                    c.invalidate('claude',state['gate_reason'])
+                            except Exception as identity_error:
+                                c.invalidate('claude',safe_error(identity_error))
+                                if client: client.close();client=None
+                        if time.monotonic()>=deadline:break
+            finally:
+                if client: client.close()
+            return 0
         if args.cmd=='observe-codex':
             if not 15 <= args.interval <=120:
                 raise ValueError('interval_must_be_15_to_120')
@@ -65,8 +166,10 @@ def main():
                 if not args.print_only: c.invalidate('codex','observer_stopped')
                 if client: client.close()
             return 0
-        if args.cmd=='configure':
-            c.configure(args.provider,args.account,json.loads(args.floors),freshness=args.freshness,max_active=args.max_active); result=c.status(args.provider)
+        if args.cmd=='set-freshness':
+            c.set_freshness(args.provider,args.seconds); result=c.status(args.provider)
+        elif args.cmd=='configure':
+            c.configure(args.provider,args.account,json.loads(args.floors),freshness=args.freshness,max_active=args.max_active,reserve_windows=json.loads(args.reserve_windows) if args.reserve_windows is not None else None); result=c.status(args.provider)
         elif args.cmd=='open-factory':
             parts=args.floors.split('/')
             if len(parts)!=2: raise ValueError('floors_require_codex_claude_pair')

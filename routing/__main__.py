@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--db', default=str(Path.home()/'.local/state/wayforge-rig/budget.sqlite3'))
     parser.add_argument('--readiness', required=True, help='JSON runtime -> boolean evidence file')
     parser.add_argument('--session-evidence', required=True, help='JSON explicit new-session assertion or current session + optional handover')
+    parser.add_argument('--model-snapshot', default=str(ROOT/'.state/claude-latest.json'))
     args = parser.parse_args()
     try:
         evidence = read(args.session_evidence)
@@ -40,9 +41,13 @@ def main():
             current, handover = evidence['current'], evidence.get('handover')
         controller = Controller(args.db, readonly=True)
         statuses = {p: controller.status(p) for p in ('codex','claude')}
+        try:
+            model_snapshot = read(args.model_snapshot)
+        except (OSError, ValueError):
+            model_snapshot = None  # Fable fails closed; other models remain eligible.
         result = plan(args.seat, read(args.preferences).get('preferences'),
                       read(args.catalog).get('models'), statuses, read(args.readiness),
-                      current=current, handover=handover)
+                      current=current, handover=handover, model_snapshot=model_snapshot)
         print(json.dumps(result, indent=2, allow_nan=False))
         return 0 if result['status']=='selected' else 2
     except Exception as error:

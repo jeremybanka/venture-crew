@@ -1,7 +1,8 @@
 """Print native hook fragments for review. Never writes, installs or trusts hooks.
 
 Codex uses project .codex/hooks.json. Claude uses .claude/settings.local.json;
-its fragment is an explicit admission blockade, not a working Claude adapter.
+its default fragment blocks admission. --enable-claude generates the live adapter
+for native verification; generation alone does not establish enforcement.
 """
 import argparse
 import json
@@ -14,17 +15,18 @@ CODEX_EVENTS=('SessionStart','UserPromptSubmit','Stop','Interrupt','PreToolUse',
 CLAUDE_EVENTS=('SessionStart','UserPromptSubmit','PreToolUse')
 
 
-def prepare(provider,seat,root,python,db):
+def prepare(provider,seat,root,python,db,*,enable_claude=False):
     ident(seat)
     root,db=Path(root),Path(db)
     if not root.is_absolute() or not db.is_absolute() or not Path(python).is_absolute():
         raise ValueError('absolute_runtime_paths_required')
     if provider not in ('claude','codex'): raise ValueError('invalid_provider')
     hooks={}
-    for event in CODEX_EVENTS if provider=='codex' else CLAUDE_EVENTS:
-        if provider=='codex':
+    events = CODEX_EVENTS if provider=='codex' else (('UserPromptSubmit','PreToolUse','Stop','StopFailure','PreCompact') if enable_claude else CLAUDE_EVENTS)
+    for event in events:
+        if provider=='codex' or enable_claude:
             command='cd '+shlex.quote(str(root))+' && '+shlex.join([python,'-m','budget.hook','--provider',provider,'--seat',seat,'--event',event,'--db',str(db)])
-            fallback=json.dumps(denied(event,'quota_hook_process_failed'),separators=(',',':'))
+            fallback=json.dumps(denied(event,'quota_hook_process_failed',provider),separators=(',',':'))
             command='( '+command+' ) || printf \'%s\\n\' '+shlex.quote(fallback)
         else:
             # Native prompt_id is documented; trustworthy quota is not established. A
@@ -34,13 +36,13 @@ def prepare(provider,seat,root,python,db):
             command='printf \'%s\\n\' '+shlex.quote(payload)
         handler={'type':'command','command':command,'timeout':8}
         if provider=='codex': handler['statusMessage']='Wayforge quota admission'
-        elif event in ('UserPromptSubmit','PreToolUse'): handler['onFailure']='block'
+        elif event in ('UserPromptSubmit','PreToolUse','PreCompact'): handler['onFailure']='block'
         group={'hooks':[handler]}
         if event=='PreToolUse': group['matcher']='.*'
         hooks[event]=[group]
     return dict(provider=provider,seat=seat,
                 target='.codex/hooks.json' if provider=='codex' else '.claude/settings.local.json',
-                activation='unverified-native-hook-trust-and-lifecycle' if provider=='codex' else 'blocked-claude-contract-incomplete',
+                activation='unverified-native-hook-trust-and-lifecycle' if provider=='codex' else ('unverified-native-claude-lifecycle' if enable_claude else 'blocked-claude-contract-incomplete'),
                 fragment={'hooks':hooks})
 
 
@@ -48,7 +50,8 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--provider',required=True,choices=('codex','claude'));p.add_argument('--seat',required=True)
     p.add_argument('--root',required=True);p.add_argument('--python',required=True);p.add_argument('--db',required=True)
+    p.add_argument('--enable-claude',action='store_true',help='Generate a live adapter only for controlled native verification; not proof of readiness')
     a=p.parse_args()
-    print(json.dumps(prepare(a.provider,a.seat,a.root,a.python,a.db),indent=2))
+    print(json.dumps(prepare(a.provider,a.seat,a.root,a.python,a.db,enable_claude=a.enable_claude),indent=2))
 
 if __name__=='__main__': main()

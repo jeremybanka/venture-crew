@@ -11,6 +11,7 @@ A ready plan is not a publication receipt or proof that tests ran.
 import re
 import hashlib
 from pathlib import PurePosixPath
+from .checks import coverage_error
 
 _REPO = re.compile(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z')
 _ID = re.compile(r'[A-Za-z0-9_.@-]{1,128}\Z')
@@ -48,7 +49,7 @@ def _receipt_block(slice):
     if tests.get('passed') is not True: return 'tests_not_passed'
     try: _text(tests.get('proof'),'test_proof',2000)
     except ValueError: return 'test_proof_missing'
-    return None
+    return coverage_error(slice.get('check_coverage'), slice['head_sha'], reviewer)
 
 
 def plan_publication(*, authorized_repo, authorized_issue, target_base, slices):
@@ -56,7 +57,7 @@ def plan_publication(*, authorized_repo, authorized_issue, target_base, slices):
 
     A slice: id, branch, head_sha, author, title, absolute body_file, optional
     predecessor (slice ID), review {reviewer, head_sha, approved, receipt},
-    tests {head_sha, passed, proof}. Only one predecessor is supported; caller
+    tests {head_sha, passed, proof}, check_coverage (see factory/checks.py). Only one predecessor is supported; caller
     splits multi-parent dependency graphs before publication. No auto-close
     issue keywords or arbitrary body text are generated.
     """

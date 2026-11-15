@@ -57,6 +57,14 @@ a bucket with no usable windows is rejected. A malformed bucket map never falls
 back to a valid-looking single bucket. Required windows must be explicitly listed;
 no missing five-hour/weekly allowance is treated as unlimited. A changed reset or
 increased remaining allowance disarms that provider and requires review/rearming.
+For Claude only, reset timestamps within one second of a persisted epoch reference
+are treated as representation jitter. The reference never follows successive
+samples, and the earliest reported deadline remains the expiry bound. Raw accepted
+timestamps stay in the observation/audit; internal per-window `reset_epochs` records
+the reference and deadline. Legacy state derives its first reference from the last
+accepted sample. Codex retains strict timestamp comparison. Allowance increases,
+expiry, stale/invalid/account-mismatched evidence and a previously latched closure
+are never rehabilitated by this tolerance; explicit reopening is still required.
 
 ## Claude telemetry and the unresolved binding boundary
 
@@ -212,3 +220,173 @@ implement that dispatcher or publish PRs; see SOP.md for handoff and pause recor
 Production CLI/hook admission requires a factory opening record; the old single-provider
 `arm` CLI is disabled. Internal independent controller APIs remain only for
 fixtures and are not a security boundary against arbitrary Python execution.
+
+### Native Claude quota observer (pinned 2.1.321)
+
+`python -m budget observe-claude --once --print-only` makes only native
+`initialize` and `get_usage` control requests, never a model prompt. The account
+binding is a hash of the same process's account email and organization; raw
+identity and credentials are never emitted. A native full account login is
+required. The existing inference-only setup token does not qualify.
+
+Static inspection of 2.1.321 proves that usage snapshots are account-UUID bound
+and accepted for less than 60 seconds before an endpoint fetch is required.
+The observer therefore dates samples at request start minus 60 seconds. It
+requires the structured `limits` and `model_scoped` projections; native seeded
+fallback after fetch failure strips `limits`, so that response is rejected.
+All ordinary and model-specific windows are enforced conservatively. Paid extra
+usage is never treated as allowance. An inactive zero-used five-hour window has
+no reset until activity begins; it is explicitly marked inactive. Unknown
+structured limits, missing account identity, unsupported native versions, errors,
+and observer shutdown fail closed. The protocol is experimental and must be
+reverified before upgrading the pinned native version.
+
+The authorized Claude opening policy uses a 40% reserve for `seven_day`, with
+`five_hour` availability stopping only at zero. Invoke the observer with
+`--observe-only-window model:fable` to retain Fable quota in
+`informational_windows` without blocking Opus on that model-specific limit.
+Fable exhaustion still makes Fable unavailable: the dispatcher must consult that
+informational window before launching Fable and use the seat's allowed fallback.
+No other model window may be exempted by this flag. Any unconfigured enforced
+window fails observation closed and requires operator reconciliation.
+
+Structured native limits must exactly agree with projected percentages and reset
+times, with no duplicates or missing projections. Credential-file metadata is
+checked across initialize and usage; an allowlisted account identity fingerprint (account UUID, organization UUID,
+email address) is checked across initialize and usage. Volatile configuration
+counters and profile refresh timestamps are deliberately excluded. This detects
+normal concurrent login/replacement without reading credential contents. It is
+not protection against a hostile local process restoring identity and credential metadata (ABA), nor a
+claim that native credentials are immutable. Native accountUuid cache validation
+provides the separate quota/account association. The controller still rejects
+an observed account hash different from its configured account.
+
+Reset precision: pinned native `Wor` preserves successful endpoint ISO reset
+strings; the header parser uses `Math.round` seconds. Successful endpoint samples
+were observed to jitter by fractions of a second around the same boundary (for
+example 05:59:59.555658 and 06:00:00.140253). After exact structured/projection
+validation, the collector canonicalizes to nearest second **minus one second**.
+That preserves conservative expiry but can still oscillate by one second; the
+controller's anchored tolerance handles that remaining representation jitter.
+Original numeric timestamps remain in top-level `raw_reset_times` in
+collector output for diagnosis, never as extra keys within normalized windows. This is a precision assumption specific to the
+verified native version, not permission to ignore arbitrary reset changes.
+
+A native seeded/incomplete fallback gets at most one retry after two seconds.
+The fallback itself is never accepted; retry evidence retains the first attempt's
+conservative freshness timestamp. Existing controller evidence continues aging
+and no gate is re-armed automatically. Account, version, and consistency failures
+are not retried; a second fallback fails closed normally.
+
+
+The long-running observer now retains one zero-model native process. Native
+2.1.321 keeps bearer-keyed endpoint failure backoff in process memory (403/429:
+Retry-After or default 300 seconds, capped at 3600). Restarting on each sample or
+seeded retry discarded that traffic protection. Seeded failures retain the
+process, but still invalidate/latch the controller exactly as before. No stale
+quota is accepted, no automatic rearm occurs, and freshness continues aging.
+Account identity and credential metadata are checked against the original native
+initialization on every sample. Other failures dispose of the process. This
+reduces unnecessary endpoint traffic; it does not guarantee endpoint recovery.
+
+### Last-successful Claude signal (Jeremy's one-hour policy)
+
+This supersedes the earlier immediate-invalidation / two-second-retry policy.
+Use `python -m budget set-freshness claude --seconds 3600` once with no active
+Claude permits. This preserves the account-bound successful observation but
+leaves the lane disarmed; it never reopens an earlier stop. Codex is unchanged.
+
+The Claude observer defaults to a five-minute refresh interval (`--interval 300`,
+allowed 300–1800 seconds). Failed attempts back off to 5, 10, 20, then 30 minutes;
+the persistent native client's own Retry-After remains in force. There is no
+immediate retry. A seeded fallback or transport timeout never becomes new quota.
+Instead the controller keeps the last validated successful sample at its original
+`observed_at`, for at most 3600 seconds. Normalization's conservative 60-second
+cache-age allowance remains, so acceptance never extends beyond the proven age.
+
+The private sample file retains the last success, including model allowances;
+refresh errors go to a separate `.refresh.json` record. Neither failure nor
+observer exit rewrites the successful timestamp. Controller state is durable,
+and admission/routing check its age and original reset deadlines. A signal older
+than an hour fails closed. Expired/reset windows, observed floors, actual provider
+denials, identity changes and schema failures still stop immediately when known.
+Local account/credential checks run every 15 seconds between network refreshes.
+No quota is invented, no reset is guessed, and no failure or later success
+implicitly rearms a latched lane.
+
+Limit: cached usage is a last-known measurement, not a real-time guarantee. Usage
+may cross a reserve between successful refreshes; actual provider quota errors
+still stop execution. Model-specific Fable exhaustion is not a provider-wide
+reserve and remains governed by the existing model routing checks.
+
+### Rig-owned Claude hook plugins
+
+`budget.claude_plugin.build` / `write_plugin` prepare a local plugin artifact
+containing the existing native quota hooks. Declare its path relative to the rig
+source root in an OpenRig Claude member's `plugin_dirs` (absolute paths are rejected).
+Pinned OpenRig 0.7.3 projects a private
+seat copy and supplies native `--plugin-dir`; quota settings need not be installed
+in guest home or any product checkout. This is launch-local configuration, not a
+new message bus. Inter-agent work, notifications and wakes remain native OpenRig
+queue/handoff/watchdog responsibilities.
+
+The artifact is bound to an exact native session name, inert for other sessions,
+and changes no permission mode or allowlist. It uses the same account-bound
+controller, native prompt identity, 40/40 opening and fail-closed admission as the
+existing adapter. Preparation is not activation: verify the actual launch loads
+the plugin and denies a closed lane before admitting model work. Preserve native
+workspace trust and request any required confirmation rather than bypassing it.
+The helper refuses to overwrite an existing artifact. Rematerialization/handover
+must preserve the plugin in the recorded native launch configuration; a copied
+file alone is not proof that a session loads it.
+
+### Restart-safe Claude refresh pacing
+
+Admission hooks read the existing controller signal; they never launch the quota
+collector or issue usage requests. The observer is the sole network path. A private,
+per-native-config refresh guard is independent of the admission DB and shared by
+normal, `--once`, and `--print-only` CLI calls. It stores the last successful raw
+normalized sample with its original timestamp, a credential-metadata identity
+fingerprint (not credentials), failure count, last attempt and next allowed attempt.
+
+An exclusive process lock covers each request; the next attempt is reserved and
+fsynced **before** native initialization. Failed, interrupted or killed attempts
+therefore cannot be immediately retried by restarting. Successful collection waits
+at least 300 seconds from completion; repeated failures back off to 1800 seconds.
+A restarted caller serves the same identity-bound cache or waits for the stored
+deadline, never re-dating it. Cache older than one hour or identity mismatch is not
+served; admission's independent freshness/reset/account rules remain authoritative.
+Corrupt scheduling state fails closed. Wall-clock rollback delays, never accelerates,
+the next request. The native long-lived collector additionally retains its own
+endpoint backoff; this guard does not claim to decode native hidden Retry-After.
+
+First rollout from the old in-memory loop requires a one-time schedule migration:
+stop the old observer gracefully, preserve its last-attempt/completion/backoff
+deadline (including unsuccessful attempts), seed the guard's next-attempt boundary,
+then launch the new code. Do not infer the deadline from successful-cache age alone.
+No quota request is needed to migrate it. Subsequent restarts need no operator wait.
+Do not remove or relocate guard state to force a refresh.
+
+When `--once` is throttled, output is a `cached: true` wrapper with the unchanged
+`sample`/controller status and `retry_after_seconds`; unavailable cache returns
+`refresh_throttled` with the same remaining delay and nonzero exit.
+
+
+## Claude five-hour continuation policy (2026-11-14 owner correction)
+
+Claude's `five_hour` reset, refill, or transition back to an unused allowance
+does not end an otherwise valid factory opening. Its reset timestamp remains
+recorded as native evidence, but crossing that timestamp alone is not a gate.
+A fresh, account-verified positive sample may retain an already-passed short
+reset timestamp. This does not extend the original observation freshness TTL
+or synthesize remaining allowance; cached evidence keeps its original age.
+
+The five-hour remaining-usage floor and actual provider denial still stop
+admission. Weekly reset/refill/deadline rules, all Codex reset rules, account
+identity, malformed/missing evidence, freshness, concurrency, and exact active
+permits are unchanged. Already closed openings (including exhaustion and manual
+pause) never auto-reopen from a short-window refill. Explicit supported reopening
+and verified fresh evidence are still required; no permit is released or rewritten.
+
+This is a narrow exception to the general reset/refill reconciliation rule,
+not permission to waive weekly reserves or actual provider limits.

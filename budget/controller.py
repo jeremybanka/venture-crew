@@ -2,6 +2,7 @@
 
 Floors are percentages remaining, never summed between providers/windows.
 Unknown/missing identity, stale samples or resets cannot reopen admission.
+Claude five-hour rollover alone does not end an otherwise valid opening.
 Only sanitized quota metadata is retained. No model calls or credential reads.
 """
 from contextlib import contextmanager
@@ -16,6 +17,14 @@ import uuid
 
 PROVIDERS = ('codex', 'claude')
 ID = re.compile(r'^[A-Za-z0-9_.:@/-]{1,256}$')
+# Claude reset metadata has been observed rounding the same epoch a second
+# either way. Compare to a persistent reference, never to a moving last sample.
+CLAUDE_RESET_JITTER_SECONDS = 1
+
+
+def continuing_window(p, key):
+    """Short Claude quota renews within an opening; all other windows stay strict."""
+    return p == 'claude' and key == 'five_hour'
 
 
 def ident(value):
@@ -113,7 +122,9 @@ class Controller:
                 if not state['account'] or not state['floors']:
                     gate = 'unconfigured'
                 else:
-                    state['floors'] = dict.fromkeys(state['floors'], floor)
+                    reserve_windows = state.get('reserve_windows', list(state['floors']))
+                    state['floors'] = {key: floor if key in reserve_windows else value
+                                       for key, value in state['floors'].items()}
                     gate = self.gate(state, require_armed=False)
                 state.update(armed=gate is None, reason=gate, opening_id=opening)
                 outcomes[p] = {'armed':gate is None, 'reason':gate, 'reserve_percent':floor}
@@ -123,13 +134,20 @@ class Controller:
                     'any_armed':any(x['armed'] for x in outcomes.values()),
                     'all_armed':all(x['armed'] for x in outcomes.values())}
 
-    def configure(self, p, account, floors, *, freshness=300, max_active=1):
+    def configure(self, p, account, floors, *, freshness=300, max_active=1, reserve_windows=None):
         """Operator configuration, disarmed until a valid reading and explicit arm."""
         account = ident(account)
         if not floors or not isinstance(floors, dict):
             raise ValueError('required_windows_missing')
         floors = {ident(k): num(v, 0, 100) for k, v in floors.items()}
-        freshness = num(freshness, 1, 900)
+        if reserve_windows is None:
+            reserve_windows = list(floors)
+        if not isinstance(reserve_windows, list) or not reserve_windows:
+            raise ValueError('invalid_reserve_windows')
+        reserve_windows = [ident(key) for key in reserve_windows]
+        if len(set(reserve_windows)) != len(reserve_windows) or not set(reserve_windows).issubset(floors):
+            raise ValueError('invalid_reserve_windows')
+        freshness = num(freshness, 1, 3600 if p == 'claude' else 900)
         if isinstance(max_active, bool) or not isinstance(max_active, int) or not 1 <= max_active <= 16:
             raise ValueError('invalid_concurrency')
         with self.tx() as db:
@@ -140,8 +158,40 @@ class Controller:
                 raise ValueError('account_already_pinned_use_new_state')
             self.close_factory(db, p, s, 'reconfigured')
             s = self.state(db, p)
-            s.update(account=account, floors=floors, freshness=freshness, max_active=max_active, armed=False, valid=False, reason='awaiting_observation', last=None, latest_observed_at=None)
-            self.save(db, p, s, 'configure', {'account': account, 'floors': floors, 'freshness': freshness, 'max_active': max_active})
+            s.update(account=account, floors=floors, reserve_windows=reserve_windows, freshness=freshness, max_active=max_active, armed=False, valid=False, reason='awaiting_observation', last=None, latest_observed_at=None)
+            s.pop('reset_epochs', None)
+            self.save(db, p, s, 'configure', {'account': account, 'floors': floors, 'reserve_windows': reserve_windows, 'freshness': freshness, 'max_active': max_active})
+
+    def set_freshness(self, p, seconds):
+        """Explicit policy migration preserving evidence, never rearming a lane."""
+        seconds = num(seconds, 1, 3600 if p == 'claude' else 900)
+        with self.tx() as db:
+            s = self.state(db, p)
+            if db.execute('SELECT 1 FROM permits WHERE provider=? AND ended IS NULL', (p,)).fetchone():
+                raise ValueError('active_permits_require_reconciliation')
+            self.close_factory(db, p, s, 'freshness_policy_changed')
+            s = self.state(db, p)
+            s.update(freshness=seconds, armed=False)
+            self.save(db, p, s, 'freshness_policy', {'seconds':seconds})
+
+    def refresh_failed(self, p, account, reason):
+        """Retain original successful evidence; never stamp it as newly observed."""
+        reason = ident(reason)
+        with self.tx() as db:
+            s = self.state(db, p)
+            if not account or account != s['account']:
+                s.update(valid=False, reason='account_mismatch')
+                self.save(db,p,s,'reject',{'reason':'account_mismatch'})
+                self.close_factory(db,p,s,'account_mismatch')
+                return {'fallback_retained':False,'reason':'account_mismatch'}
+            # Gates enforce original age, reset deadline, floor, and any latched
+            # stop. A transport failure cannot overwrite or rehabilitate them.
+            gate = self.factory_gate(db,s) or self.gate(s)
+            self.save(db,p,s,'refresh_failed',{'reason':reason,'observed_at':s['last']['observed_at'] if s['last'] else None})
+            if gate:
+                self.close_factory(db,p,s,gate)
+            return {'fallback_retained':gate is None,'reason':gate or 'last_successful_signal',
+                    'observed_at':s['last']['observed_at'] if s['last'] else None}
 
     def invalidate(self, p, reason):
         reason = ident(reason)
@@ -181,19 +231,53 @@ class Controller:
                 if not isinstance(windows, dict) or not s['floors'] or not set(s['floors']).issubset(windows):
                     raise ValueError('required_window_missing')
                 clean = {}
+                reset_epochs = {}
                 reset = False
                 for key in s['floors']:
                     value = windows[key]
-                    remaining, resets = num(value['remaining_percent'], 0, 100), num(value['resets_at'], 1)
-                    if resets <= now:
-                        raise ValueError('reset_expired')
+                    continuing = continuing_window(p, key)
+                    remaining = num(value['remaining_percent'], 0, 100)
+                    inactive = value.get('inactive', False)
+                    if not isinstance(inactive, bool):
+                        raise ValueError('invalid_inactive_window')
+                    if inactive:
+                        # A native unused allowance has no running reset clock.
+                        # Null alone is not evidence of inactivity.
+                        if remaining != 100 or value['resets_at'] is not None:
+                            raise ValueError('invalid_inactive_window')
+                        resets = None
+                    else:
+                        resets = num(value['resets_at'], 1)
+                        if resets <= now and not continuing:
+                            raise ValueError('reset_expired')
                     clean[key] = dict(remaining_percent=remaining, resets_at=resets)
+                    if inactive:
+                        clean[key]['inactive'] = True
+                    old = last['windows'][key] if last else None
+                    same_reset = old is not None and resets == old['resets_at']
+                    if p == 'claude' and not inactive:
+                        epoch = dict(reference=resets, deadline=resets)
+                        if old and not old.get('inactive', False):
+                            prior = s.get('reset_epochs', {}).get(key, {})
+                            reference = prior.get('reference', old['resets_at'])
+                            same_reset = abs(resets - reference) <= CLAUDE_RESET_JITTER_SECONDS
+                            if same_reset:
+                                epoch = dict(reference=reference,
+                                    deadline=min(prior.get('deadline', old['resets_at']), resets))
+                                if epoch['deadline'] <= now and not continuing:
+                                    raise ValueError('reset_expired')
+                        reset_epochs[key] = epoch
                     if last:
-                        old = last['windows'][key]
-                        if resets != old['resets_at'] or remaining > old['remaining_percent']:
-                            reset = True
+                        # Starting an unused window is not a refill. Returning an
+                        # active allowance to unused requires rearm except the
+                        # explicitly continuing Claude five-hour allowance.
+                        if not continuing and not old.get('inactive', False):
+                            if inactive or not same_reset or remaining > old['remaining_percent']:
+                                reset = True
                 sample = dict(provider=p, account_id=s['account'], observed_at=observed, source=ident(raw.get('source')), windows=clean)
                 s.update(last=sample, valid=True, reason=None)
+                if p == 'claude':
+                    s['reset_epochs'] = reset_epochs
                 if reset:
                     s.update(armed=False, reason='reset_requires_rearm')
                 self.save(db, p, s, 'observe', {'sample': sample, 'reset_requires_rearm': reset})
@@ -224,8 +308,12 @@ class Controller:
             return 'stale_observation'
         for k, floor in s['floors'].items():
             w = last['windows'][k]
-            if w['resets_at'] <= now:
-                return 'reset_expired'
+            # Five-hour rollover is informational, not a stop. Remaining quota
+            # and ORIGINAL observation age still gate this continuing window.
+            if not w.get('inactive', False) and not continuing_window(last['provider'], k):
+                deadline = s.get('reset_epochs', {}).get(k, {}).get('deadline', w['resets_at'])
+                if min(w['resets_at'], deadline) <= now:
+                    return 'reset_expired'
             if w['remaining_percent'] <= floor:
                 return 'usage_floor:' + k
         return None

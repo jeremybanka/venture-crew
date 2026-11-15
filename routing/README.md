@@ -51,3 +51,14 @@ explicit seat overrides take precedence. A native bridge must carry the resolved
 effort when changing model/runtime; the planner does not execute that setting.
 Verified Sol supports high, and installed Claude accepts the high effort flag.
 Still verify each newly resolved model's supported effort before launch.
+
+Fable 5.2 additionally needs `--model-snapshot` (default
+`.state/claude-latest.json` under the rig checkout). Its input is the collector's
+persisted `{"accepted":true,"sample":{...}}` record, not a bare sample.
+Rejected/missing records fail closed for Fable only. The sample's account,
+observation time, source and enforced windows must match the controller's latest
+accepted observation, and remain fresh. `informational_windows["model:fable"]`
+must show valid, unexpired availability above zero. This is not a 40% model
+reserve, and never blocks Opus. Native dispatch preflight supplies this same
+record as `model_snapshot` and revalidates it before launch; a route snapshot is
+still not an admission permit.

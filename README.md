@@ -1,7 +1,8 @@
-# Venture Crew
+# Wayforge expedition
 
-A VM-owned OpenRig crew serving Wayforge's development repositories. The deployment checkout lives **inside the Wayforge VM**; `/home/crew/venture-crew` below is an example path. It is separate from
-both dotfiles and the product repo `/home/crew/project`. This repository owns
+A VM-owned OpenRig crew serving Wayforge's development repositories. The example
+checkout is `/home/crew/venture-crew` **inside the Wayforge VM**. It is separate from
+both dotfiles and the product repo `/home/crew/wayforge`. This repository owns
 the canonical crew, model policy, budgets, hygiene and issue-to-PR workflow.
 Dotfiles owns only VM/clean-runtime provisioning; its integration points here
 rather than duplicating the workflow plan.
@@ -22,17 +23,18 @@ rather than duplicating the workflow plan.
 | care.cleric | Developer experience and prevention of workflow failures |
 | care.chronicler | Documentation and useful decision records |
 | care.deckhand | Safe task-linked worktree hygiene |
+| care.lookout | Read-only current-head CI observation and durable reports |
 | refinery.warden | Independent exact-revision review and serialized integration |
 
 Knight and Ranger are not seats. Striders own ordinary fixes and hardening.
 Warden's integration remit does not authorize remote publication or deployment.
 Runtime choices are configuration, not identities; two Striders do not imply two
-simultaneous admitted turns. Roles are available responsibilities, not 14
+simultaneous admitted turns. Roles are available responsibilities, not 15
 always-spending sessions.
 
 ## What is implemented
 
-- Native RigSpec and AgentSpec with all 14 seats, role guidance and handoff edges.
+- Native RigSpec and AgentSpec with all 15 seats, role guidance and handoff edges.
 - [Culture](CULTURE.md), [SOP](SOP.md), and [guest context](CONTEXT.md).
 - [Independent Claude and Codex budget controllers](budget/README.md): separate
   identities, windows, remaining-percentage floors, permits, freshness, reset
@@ -51,7 +53,8 @@ always-spending sessions.
 
 **Configured repository, not an active crew.** See [SETUP.md](SETUP.md) for exactly
 what was verified and the unresolved activation boundaries. Both budgets start
-closed. No first workload, per-opening reserve instruction or permission expansion is selected by this checkout.
+closed. No first workload, per-opening reserve instruction, remote repository or permission
+expansion is selected by this checkout.
 
 From a clean Wayforge shell:
 
@@ -70,8 +73,6 @@ No secrets or runtime queues belong in this repository. Use native OpenRig task
 records and the shared runtime-state location documented by each tool.
 
 ## Provenance
-
-This public source snapshot preserves the implementation from guest commit `ca4d861` with machine-specific inventory and paths removed. Original development history remains private on the guest.
 
 Crew design follows Jeremy's November 12–13 instructions. The original sketch
 was on dotfiles branch `plan/wayforge-expedition` at `e17eb49`; that is historical
@@ -104,3 +105,14 @@ provider's independent gate. A closed provider does not block the other.
 
 Unknown model IDs are ineligible, never guessed. A model-order change does not
 activate a provider or override native permission/handover gates.
+
+## Publishing rig updates
+
+The authorized rig-definition destination is `jeremybanka/venture-crew`, branch
+`main`. Keep current source and reusable policy changes published there using
+normal fast-forward pushes after tests and independent diff/security review.
+Do not publish deployment inventory, account bindings, credentials, runtime state,
+queue/session evidence, private blocker logs or machine-local overrides. Preserve
+active deployments; reconcile source through an isolated task worktree rather
+than committing the live tree wholesale. Public guest paths are examples and must
+be adapted locally. Product repository publication and merge rules are unchanged.

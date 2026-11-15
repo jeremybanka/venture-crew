@@ -56,6 +56,10 @@
     "refinery.warden": [
       "Opus",
       "Sol"
+    ],
+    "care.lookout": [
+      "Sol",
+      "Opus"
     ]
   },
   "unresolved_seats": [],

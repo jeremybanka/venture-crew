@@ -14,6 +14,53 @@ The caller must actually verify stopped-session and durable checkpoint evidence.
 A plan is a snapshot, NOT a permit: revalidate and acquire admission atomically
 at launch. This module never releases permits or starts/stops sessions.
 """
+import time
+from budget.controller import num
+
+
+def accepted_model_sample(record):
+    """Unwrap the collector's persisted receipt, never a bare/unaccepted sample."""
+    if not isinstance(record, dict) or record.get('accepted') is not True:
+        raise ValueError('accepted_model_snapshot_required')
+    sample = record.get('sample')
+    if not isinstance(sample, dict):
+        raise ValueError('model_sample_required')
+    return sample
+
+
+def model_gate(entry, state, record, now):
+    if entry['model'] != 'claude-fable-5-2':
+        return None
+    try:
+        sample = accepted_model_sample(record)
+        if not isinstance(sample, dict) or sample.get('provider') != 'claude':
+            raise ValueError()
+        if sample.get('account_bound') is not True or sample.get('freshness_proven') is not True or sample.get('usage_allowed') is not True:
+            raise ValueError()
+        last = state['last']
+        if state.get('valid') is not True or sample.get('account_id') != state['account']:
+            raise ValueError()
+        for key in ('account_id', 'observed_at', 'source', 'windows'):
+            if sample.get(key) != last[key]:
+                raise ValueError()
+        observed = num(sample['observed_at'], 1)
+        if observed > now + 30 or now - observed > num(state['freshness'], 1, 900):
+            raise ValueError()
+        window = sample['informational_windows']['model:fable']
+        remaining = num(window['remaining_percent'], 0, 100)
+        inactive = window.get('inactive', False)
+        if type(inactive) is not bool:
+            raise ValueError()
+        if inactive:
+            if remaining != 100 or window['resets_at'] is not None:
+                raise ValueError()
+        elif num(window['resets_at'], 1) <= now:
+            raise ValueError()
+        return 'model_allowance_exhausted' if remaining <= 0 else None
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return 'model_allowance_unknown_or_stale'
+
+
 PAIRS = {'codex': 'codex', 'claude': 'claude-code'}
 
 
@@ -27,8 +74,9 @@ def route(value):
             and value.get('runtime') == PAIRS[value['provider']])
 
 
-def plan(seat, preferences, catalog, statuses, readiness, *, current=None, handover=None):
+def plan(seat, preferences, catalog, statuses, readiness, *, current=None, handover=None, model_snapshot=None, now=None):
     """Return selected/blocked/wait/handover_required with diagnostic skips."""
+    now = time.time() if now is None else now
     result = {'status': 'blocked', 'seat': seat, 'selected': None,
               'ready_to_launch': False, 'skipped': []}
 
@@ -74,6 +122,8 @@ def plan(seat, preferences, catalog, statuses, readiness, *, current=None, hando
             reason = 'provider_closed'
         elif readiness.get(entry['runtime']) is not True:
             reason = 'harness_not_ready'
+        if reason is None:
+            reason = model_gate(entry, statuses[entry['provider']], model_snapshot, now)
         if reason:
             result['skipped'].append({'preference': key, 'reason': reason})
             continue
