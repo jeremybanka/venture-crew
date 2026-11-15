@@ -44,7 +44,7 @@ def model_gate(entry, state, record, now):
             if sample.get(key) != last[key]:
                 raise ValueError()
         observed = num(sample['observed_at'], 1)
-        if observed > now + 30 or now - observed > num(state['freshness'], 1, 900):
+        if observed > now + 30 or now - observed > num(state['freshness'], 1, 3600):
             raise ValueError()
         window = sample['informational_windows']['model:fable']
         remaining = num(window['remaining_percent'], 0, 100)
