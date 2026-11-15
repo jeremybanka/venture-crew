@@ -57,8 +57,9 @@ Warden's refinery remit produces an independently reviewed PR stack for Jeremy t
 merge, rather than merging it for him. The first PR targets the authorized base;
 each dependent PR targets its predecessor's branch. Independent work need not be
 artificially stacked. Track branch, exact head SHA, base SHA, predecessor PR, review
-receipt and tests in the native queue record. Publish draft PRs while incomplete;
-mark ready only after acceptance evidence. Never enable auto-merge or merge these
+receipt and tests in the native queue record. Create normal (non-draft) PRs after independent acceptance and required evidence.
+Incomplete work stays local unless explicitly authorized as a validation-only draft;
+normal PR status does not claim completion or waive CI/screenshot holds. Never enable auto-merge or merge these
 PRs. Rebase/restack through the integration slot, preserve published work, and
 repeat affected checks and independent review for material conflict resolutions.
 

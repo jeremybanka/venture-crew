@@ -102,14 +102,14 @@ def plan_publication(*, authorized_repo, authorized_issue, target_base, slices):
         reason=_receipt_block(item)
         if predecessor and not completed[predecessor]['ready']: reason='predecessor_blocked'
         ready=reason is None
-        body=(f'Related issue: {issue}\n\nDraft slice `{item["id"]}`. Owner review and merge required.\n'
+        body=(f'Related issue: {issue}\n\nReviewed slice `{item["id"]}`. Owner review and merge required.\n'
               f'Planned base: `{base}`. Exact reviewed head: `{item["head_sha"]}`.\n'
               'No claim of issue completion or merge is made by this publication plan.\n')
         if ready:
             review_digest=hashlib.sha256(item['review']['receipt'].encode()).hexdigest()
             test_digest=hashlib.sha256(item['tests']['proof'].encode()).hexdigest()
             body+=f'\nIndependent reviewer: `{item["review"]["reviewer"]}`.\nReview receipt SHA-256: `{review_digest}`.\nTest proof SHA-256: `{test_digest}`.\n'
-        argv=['gh','pr','create','--repo',authorized_repo,'--base',base,'--head',item['branch'],'--draft','--title',item['title'],'--body-file',item['body_file']] if ready else None
+        argv=['gh','pr','create','--repo',authorized_repo,'--base',base,'--head',item['branch'],'--title',item['title'],'--body-file',item['body_file']] if ready else None
         plan=dict(slice_id=item['id'],ready=ready,reason=reason,repo=authorized_repo,issue=authorized_issue,
                   base=base,head=item['branch'],head_sha=item['head_sha'],predecessor=predecessor,
                   argv=argv,body_file=item['body_file'],body=body)

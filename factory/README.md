@@ -1,7 +1,7 @@
 # Selected GitHub issues → native queue → reviewed PR stack
 
 These components implement validated planning plus explicit cold enqueue, bounded
-fresh-launch and draft-publication execution adapters. They are not a running
+fresh-launch and reviewed-publication execution adapters. They are not a running
 factory or GitHub poller. Execution has only been tested with injected fixtures.
 No repository, issue or readiness label is eligible by default.
 
@@ -75,14 +75,14 @@ The ordered slices schema is documented in `publication.py`. Each entry records
 branch, exact head SHA, author, independent review receipt, tests for that SHA and
 optional predecessor slice. Invalid branches/graphs or duplicate artifacts reject;
 missing/stale review/tests block the slice and descendants. Ready output contains
-explicit `gh pr create --draft --repo … --base … --head …` argv and generated body.
+explicit `gh pr create --repo … --base … --head …` argv and generated body.
 No merge, auto-merge, implicit push/fork or issue auto-close command is generated.
 Review/test receipt hashes identify supplied evidence without publishing raw logs.
 
 Before executing a generated publication command, the authorized operator must
 verify receipt authenticity, current remote head/base, branch ownership, repository
 publication permission and existing PRs for retry idempotency, then materialize the
-body verbatim. Do not blindly rerun create after an uncertain response. The explicit `publish --execute` adapter below creates drafts with durable retry
+body verbatim. Do not blindly rerun create after an uncertain response. The explicit `publish --execute` adapter below creates normal PRs with durable retry
 protection. No code pushes branches, merges PRs, marks drafts ready, or restacks
 remote branches. Jeremy merges. Only verified merge state can satisfy delivery;
 Deckhand still independently checks unique/unpushed/active work before retirement.
@@ -135,7 +135,7 @@ acquired. A launch receipt is not task completion or proof of model admission.
 installed.** Arbitrary JSON true values are not adequate preflight evidence. Native
 successor-first runtime switching is deliberately unsupported by this adapter.
 
-`factory.github.GitHubPublisher` and CLI `publish` execute reviewed draft creation:
+`factory.github.GitHubPublisher` and CLI `publish` execute reviewed normal PR creation:
 
 ```sh
 python3 -m factory publish --repo OWNER/REPO --issue NUMBER \
@@ -148,9 +148,9 @@ The publisher pins all GitHub calls to github.com (ignoring ambient GH_HOST),
 canonicalizes repository identity for retry lanes, and blocks new creation for a
 closed issue. It reruns exact-revision review planning, reads the selected issue,
 checks existing PRs, exact remote branch SHA and expected base SHA (a dependent
-slice uses its predecessor's approved SHA). It creates only a draft, then reads
+slice uses its predecessor's approved SHA). It creates a normal (non-draft) PR, then reads
 back and rechecks head/base. There is no push/fork/merge/auto-merge operation.
-Ambiguous, closed, non-draft, cross-repo or mismatched existing PRs block. A private
+Ambiguous, closed, malformed draft-state, cross-repo or mismatched existing PRs block. A private
 locked SQLite journal records an unknown attempt **before** create, keyed by repo
 and head branch so changing SHA/base/issue cannot bypass it. Unknown outcomes only
 reconcile by verified readback; they never blindly create again. An unresolved
@@ -255,3 +255,8 @@ cold for installations without a verified metered Captain. Already submitted
 observations are not duplicated or resent merely because wake is enabled.
 After a reported problem, current-head green recovery is also handed to Captain,
 so dependent work can resume on evidence rather than an external manual check.
+
+Existing draft and normal PRs are reconciled without duplicate creation; receipts
+include `is_draft`. Reconciliation never promotes an existing draft. Publication
+still requires exact independent review, tests and discovered check coverage.
+Normal status does not replace screenshot inclusion, current CI or human merge.

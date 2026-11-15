@@ -12,4 +12,4 @@ Preserve Scrubs clean/dirty boundaries and Wayfarer CI isolation. Do not change 
 
 ## Factory openings
 
-For factory work, integration means preparing and independently validating a stack of PRs for Jeremy to merge. Publish only within the admitted repository/destination scope. Each dependent PR targets its predecessor; preserve exact revision/review evidence. Do not merge or enable auto-merge. Budget pauses leave unfinished work draft and retained.
+For factory work, integration means preparing and independently validating a stack of PRs for Jeremy to merge. Publish only within the admitted repository/destination scope. Each dependent PR targets its predecessor; preserve exact revision/review evidence. Do not merge or enable auto-merge. Create normal PRs only after independent acceptance and required evidence. Budget pauses retain unfinished work; validation-only draft publication needs explicit scope. Existing draft reconciliation does not itself promote a PR or certify completion.

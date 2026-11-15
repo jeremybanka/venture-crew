@@ -13,7 +13,7 @@ class FakeGitHub:
     def __init__(self):
         self.calls=[];self.rows=[];self.issue_state='open';self.sha=SHA;self.base_sha=SHA;self.create_mode='success'
     def pr(self):
-        return dict(number=7,url='https://github.com/owner/repo/pull/7',state='OPEN',isDraft=True,headRefName='factory/one',headRefOid=SHA,baseRefName='main',isCrossRepository=False,body='Related issue: https://github.com/owner/repo/issues/17')
+        return dict(number=7,url='https://github.com/owner/repo/pull/7',state='OPEN',isDraft=False,headRefName='factory/one',headRefOid=SHA,baseRefName='main',isCrossRepository=False,body='Related issue: https://github.com/owner/repo/issues/17')
     def __call__(self,argv):
         self.calls.append(argv)
         if argv[:3]==[GH,'pr','create']:
@@ -45,6 +45,22 @@ class GitHubTests(unittest.TestCase):
         self.assertEqual(self.pub.publish(**self.args)['status'],'verified')
         self.assertFalse(self.pub.publish(**self.args)['created']);self.assertEqual(self.fake.creates(),1)
         self.assertTrue(all('merge' not in c and 'push' not in c for c in self.fake.calls))
+    def test_normal_creation_and_legacy_draft_reconcile_without_promotion(self):
+        result=self.pub.publish(**self.args)
+        self.assertIs(result['is_draft'],False)
+        self.assertNotIn('--draft', next(c for c in self.fake.calls if c[:3]==[GH,'pr','create']))
+        self.fake.rows[0]['isDraft']=True
+        result=self.pub.publish(**self.args)
+        self.assertIs(result['is_draft'],True)
+        self.assertFalse(result['created'])
+        self.assertEqual(self.fake.creates(),1)
+        self.assertFalse(any(c[1:3]==['pr','ready'] for c in self.fake.calls))
+    def test_malformed_draft_state_blocks(self):
+        for value in (None,0,1,'false'):
+            self.fake.rows=[dict(self.fake.pr(),isDraft=value)]
+            with self.assertRaisesRegex(ValueError,'existing_pr_mismatch'):
+                self.pub.publish(**self.args)
+        self.assertEqual(self.fake.creates(),0)
     def test_timeout_reconciles_success(self):
         self.fake.create_mode='timeout_after_create'
         self.assertEqual(self.pub.publish(**self.args)['status'],'verified');self.assertEqual(self.fake.creates(),1)

@@ -1,4 +1,4 @@
-"""Draft-only GitHub publication with durable uncertain-result reconciliation.
+"""Reviewed normal-PR GitHub publication with durable uncertain-result reconciliation.
 
 No push/merge API exists here. A caller must authorize the explicit repository
 and issue, authenticate review receipts, and choose the slice. Cross-process
@@ -66,9 +66,9 @@ class GitHubPublisher:
         row=rows[0]
         expected_url=f'https://github.com/{plan["repo"]}/pull/'
         issue=f'https://github.com/{plan["repo"]}/issues/{plan["issue"]}'
-        if not isinstance(row,dict) or row.get('isCrossRepository') is not False or row.get('headRefName')!=plan['head'] or row.get('baseRefName')!=plan['base'] or row.get('headRefOid')!=plan['head_sha'] or row.get('state')!='OPEN' or row.get('isDraft') is not True or not isinstance(row.get('number'),int) or isinstance(row.get('number'),bool) or row['number']<1 or str(row.get('url','')).casefold()!=(expected_url+str(row['number'])).casefold() or issue.casefold() not in str(row.get('body','')).casefold():
+        if not isinstance(row,dict) or row.get('isCrossRepository') is not False or row.get('headRefName')!=plan['head'] or row.get('baseRefName')!=plan['base'] or row.get('headRefOid')!=plan['head_sha'] or row.get('state')!='OPEN' or type(row.get('isDraft')) is not bool or not isinstance(row.get('number'),int) or isinstance(row.get('number'),bool) or row['number']<1 or str(row.get('url','')).casefold()!=(expected_url+str(row['number'])).casefold() or issue.casefold() not in str(row.get('body','')).casefold():
             raise ValueError('existing_pr_mismatch')
-        return {'number':row['number'],'url':row['url']}
+        return {'number':row['number'],'url':row['url'],'is_draft':row['isDraft']}
 
     def publish(self, *, authorized_repo, authorized_issue, target_base, expected_base_sha, slices, slice_id, check_repository):
         if not isinstance(expected_base_sha,str) or not _SHA.fullmatch(expected_base_sha):

@@ -13,11 +13,11 @@ class PublicationTests(unittest.TestCase):
     def plan(self,slices,**kw):
         args=dict(authorized_repo='owner/repo',authorized_issue=17,target_base='main',slices=slices);args.update(kw)
         return plan_publication(**args)
-    def test_stack_is_explicit_draft_argv(self):
+    def test_stack_is_explicit_normal_argv(self):
         plans=self.plan([self.slice(),self.slice('two',predecessor='one')])
         self.assertTrue(all(p['ready'] for p in plans))
         self.assertEqual(plans[0]['base'],'main');self.assertEqual(plans[1]['base'],'factory/one')
-        self.assertEqual(plans[1]['argv'],['gh','pr','create','--repo','owner/repo','--base','factory/one','--head','factory/two','--draft','--title','Slice two','--body-file','/tmp/two.md'])
+        self.assertEqual(plans[1]['argv'],['gh','pr','create','--repo','owner/repo','--base','factory/one','--head','factory/two','--title','Slice two','--body-file','/tmp/two.md'])
         self.assertIn('https://github.com/owner/repo/issues/17',plans[1]['body'])
         self.assertNotIn('merge',plans[1]['argv'])
     def test_missing_review_and_descendant_block(self):
