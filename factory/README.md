@@ -260,3 +260,23 @@ Existing draft and normal PRs are reconciled without duplicate creation; receipt
 include `is_draft`. Reconciliation never promotes an existing draft. Publication
 still requires exact independent review, tests and discovered check coverage.
 Normal status does not replace screenshot inclusion, current CI or human merge.
+
+## Native GitHub stacks
+
+`factory.stacks.StackPublisher.register` registers an explicitly authorized,
+independently reviewed list of existing normal PRs in bottom-to-top order. Supply
+`authorized_repo` and `pull_requests`, each with exact `number`, `head`, `head_sha`,
+`base` and `base_sha`. The caller authenticates review and publication authority;
+this adapter verifies current open/same-repository PR eligibility and exact refs,
+SHAs and chain. It uses the documented GitHub stacks API, not markdown-only links:
+https://docs.github.com/en/rest/pulls/stacks (API version `2026-03-10`).
+
+Every member's existing stack membership is checked. An exact match reconciles;
+partial/conflicting membership blocks. A private locked journal records attempts
+before writes and prevents blind retries after ambiguous outcomes, even with a
+changed revision. Post-write membership/order/revision readback must pass. API
+read/write races remain possible and are reported as unknown rather than success.
+No PR promotion, stack edits/deletion, branch push, merge or auto-merge is exposed.
+This is a callable adapter with mocked tests, not an installed automatic dispatcher
+or evidence that a real stack has been registered. Preserve the journal across
+retries and do not create a fresh state directory to evade uncertain results.
